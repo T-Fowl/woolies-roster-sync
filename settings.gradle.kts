@@ -1,1 +1,1 @@
-rootProject.name = "workjam"
+rootProject.name = "workjam-schedule-sync"

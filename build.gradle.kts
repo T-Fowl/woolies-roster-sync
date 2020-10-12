@@ -30,9 +30,17 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.6.0")
 
-    implementation("com.google.api-client:google-api-client:1.23.0")
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.23.0")
-    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.23.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.23.0") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+    }
+    implementation("com.google.api-client:google-api-client:1.23.0") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+    }
+    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.23.0") {
+        exclude(group = "org.apache.httpcomponents", module = "httpclient")
+    }
+
+    implementation(project("google-api-okhttp-transport"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.6")
 

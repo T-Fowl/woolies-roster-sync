@@ -3,7 +3,6 @@ package com.tfowl.workjam
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
-import com.google.api.client.googleapis.apache.GoogleApacheHttpTransport
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.batch.BatchRequest
@@ -18,7 +17,7 @@ import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.CalendarScopes
-import com.google.api.services.calendar.model.Event
+import com.tfowl.googlapi.okhttp.OkHttpTransport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import java.io.File
@@ -48,12 +47,12 @@ private fun getCredentials(
 
 object GoogleCalendar {
     private val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
-    private val httpTransport = GoogleApacheHttpTransport.newTrustedTransport()
+    private val httpTransport = OkHttpTransport()
     private val jsonFactory = JacksonFactory.getDefaultInstance()
     private val scopes = listOf(CalendarScopes.CALENDAR)
     private val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
 
-    val calendar = Calendar.Builder(httpTransport, jsonFactory, credentials)
+    val calendar: Calendar = Calendar.Builder(httpTransport, jsonFactory, credentials)
         .setApplicationName(APPLICATION_NAME)
         .build()
 }

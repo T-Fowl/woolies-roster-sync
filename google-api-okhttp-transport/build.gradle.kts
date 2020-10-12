@@ -4,7 +4,7 @@ plugins {
     kotlin("jvm")
 }
 
-group = "com.tfowl"
+group = "com.tfowl.google-apis"
 version = "1.0-SNAPSHOT"
 
 repositories {
@@ -18,7 +18,6 @@ java {
 
 tasks.withType<KotlinCompile>().all {
     kotlinOptions.jvmTarget = "1.8"
-    kotlinOptions.freeCompilerArgs = listOf("-Xinline-classes", "-Xopt-in=kotlin.RequiresOptIn")
 }
 
 dependencies {
@@ -26,7 +25,7 @@ dependencies {
 
     api("com.squareup.okhttp3:okhttp:3.14.9")
 
-    api("com.google.api-client:google-api-client:1.23.0") {
+    implementation("com.google.api-client:google-api-client:1.23.0") {
 
         // Point of this module is to not have to pull in apache httpcomponents
         exclude(group = "org.apache.httpcomponents", module = "httpclient")

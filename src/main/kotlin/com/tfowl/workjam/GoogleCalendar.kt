@@ -50,12 +50,24 @@ object GoogleCalendar {
     private val httpTransport = OkHttpTransport()
     private val jsonFactory = JacksonFactory.getDefaultInstance()
     private val scopes = listOf(CalendarScopes.CALENDAR)
-    private val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
+    val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
 
     val calendar: Calendar = Calendar.Builder(httpTransport, jsonFactory, credentials)
         .setApplicationName(APPLICATION_NAME)
         .build()
 }
+
+//fun GoogleCalendar(
+//    dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY)),
+//    httpTransport: HttpTransport = OkHttpTransport(),
+//    jsonFactory: JsonFactory = JacksonFactory.getDefaultInstance(),
+//    scopes: List<String> = listOf(CalendarScopes.CALENDAR)
+//): Calendar {
+//    val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
+//    return Calendar.Builder(httpTransport, jsonFactory, credentials)
+//        .setApplicationName(APPLICATION_NAME)
+//        .build()
+//}
 
 internal fun <T> AbstractGoogleJsonClientRequest<T>.queueDeferred(batch: BatchRequest): Deferred<T> {
     val cp = CompletableDeferred<T>()

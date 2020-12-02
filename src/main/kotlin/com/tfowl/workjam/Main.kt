@@ -27,8 +27,8 @@ fun OffsetDateTime.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): Local
 
 fun OffsetDateTime.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = atZoneSameInstant(zone).toLocalDate()
 
-private suspend fun reauthenticate(ds: DataStore<String>, userIdentifier: String, workjam: WorkjamEndpoints): String {
-    val old = requireNotNull(ds[userIdentifier]) { "No token stored for $userIdentifier" }
+private suspend fun reauthenticate(ds: DataStore<String>, userIdentifier: String, workjam: WorkjamEndpoints, override: String? = null): String {
+    val old = requireNotNull(override ?: ds[userIdentifier]) { "No token stored for $userIdentifier" }
     val response = workjam.auth(old)
     ds[userIdentifier] = response.token
     return response.token
@@ -67,10 +67,11 @@ private fun OffsetDateTime.toGoogleDateTime(): DateTime = DateTime(toInstant().t
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
-    require(args.size >= 2) { "Usage [workjam] id calendar" }
+    require(args.size >= 2) { "Usage: workjam-schedule-sync id calendar [workjam jwt]" }
 
     val USER_ID = args[0]
     val CALENDAR_ID = args[1]
+    val TOKEN_OVERRIDE = args.elementAtOrNull(2)
 
     /* Included by google apis, might as well use for our own serialisation */
     val dsf: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
@@ -87,6 +88,13 @@ suspend fun main(vararg args: String) = coroutineScope {
                 "Referer: https://app.workjam.com/"
             )
         )
+        .addInterceptor { chain ->
+            val request = chain.request()
+            println(request)
+            val response = chain.proceed(request)
+            println(response)
+            response
+        }
 
     val retrofit = Retrofit.Builder()
         .client(httpClient.build())
@@ -95,8 +103,7 @@ suspend fun main(vararg args: String) = coroutineScope {
         .build()
 
     val workjam = retrofit.create<WorkjamEndpoints>()
-
-    val token = reauthenticate(dsf.getDataStore("WorkjamTokens"), "user", workjam)
+    val token = reauthenticate(dsf.getDataStore("WorkjamTokens"), "user", workjam, TOKEN_OVERRIDE)
 
     val syncPeriodStart = OffsetDateTime.now()
     val syncPeriodEnd = OffsetDateTime.now().plusMonths(2)

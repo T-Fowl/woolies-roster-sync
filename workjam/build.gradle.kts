@@ -34,7 +34,7 @@ dependencies {
         exclude(group = "org.apache.httpcomponents", module = "httpclient")
     }
 
-    implementation(project("google-api-okhttp-transport"))
+    implementation(project(":google-api-okhttp-transport"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.6")
 

@@ -81,8 +81,8 @@ private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorRes
 }
 
 private fun obtainTable(page: PDPage, debugger: VisualDebugger? = null): Table {
-    val detection = IntersectionDetector()
-            .detect(page, tolerance = 0.275, combineTolerance = 0.275, alignTolerance = 2.0)
+    val detection = CombinatorialIntersectionDetector()
+            .detect(page, detectionTolerance = 0.275, combineTolerance = 0.275, alignmentTolerance = 2.0)
 
     debugger?.visualiseDetection(detection)
 

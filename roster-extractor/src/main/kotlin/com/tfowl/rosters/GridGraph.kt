@@ -2,10 +2,10 @@ package com.tfowl.rosters
 
 @Suppress("unused", "MemberVisibilityCanBePrivate", "CanBeParameter")
 class GridGraph(val lines: Set<PdfLine>,
-                val intersections: Set<PdfLineIntersectionPoint>
+                val intersections: Set<PdfLineIntersection>
 ) {
-    val linesToIntersections = mutableMapOf<PdfLine, HashSet<PdfLineIntersectionPoint>>()
-    val intersectionsToLines = mutableMapOf<PdfLineIntersectionPoint, HashSet<PdfLine>>()
+    val linesToIntersections = mutableMapOf<PdfLine, HashSet<PdfLineIntersection>>()
+    val intersectionsToLines = mutableMapOf<PdfLineIntersection, HashSet<PdfLine>>()
 
     init {
 

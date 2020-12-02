@@ -7,7 +7,7 @@ import java.awt.geom.Point2D
 import java.util.*
 
 
-data class PdfLineIntersectionPoint(
+data class PdfLineIntersection(
         val midpoint: Point2D,
         val alignedMidpoint: Point2D,
         val lines: HashSet<PdfLine>,
@@ -16,7 +16,7 @@ data class PdfLineIntersectionPoint(
 data class IntersectionDetectorResults(
         val page: PDPage,
         val lines: Set<PdfLine>,
-        val intersections: Set<PdfLineIntersectionPoint>,
+        val intersections: Set<PdfLineIntersection>,
         val horizontalGridLines: SortedSet<Double>,
         val verticalGridLines: SortedSet<Double>) {
 
@@ -46,9 +46,9 @@ class IntersectionDetector {
         return IntersectionDetectorResults(page, linesWhichIntersect.toSet(), uniqueIntersections.toSet(), horizontalLines, verticalLines)
     }
 
-    private fun List<PdfLine>.findAllIntersections(tolerance: Double): List<PdfLineIntersectionPoint> {
+    private fun List<PdfLine>.findAllIntersections(tolerance: Double): List<PdfLineIntersection> {
         val lines = this
-        val intersections = mutableListOf<PdfLineIntersectionPoint>()
+        val intersections = mutableListOf<PdfLineIntersection>()
 
         val pointA = Vector3d()
         val pointB = Vector3d()
@@ -70,7 +70,7 @@ class IntersectionDetector {
                                 0.5 * (pointA.x + pointB.x),
                                 0.5 * (pointA.y + pointB.y)
                         )
-                        intersections.add(PdfLineIntersectionPoint(mid, mid, hashSetOf(a, b)))
+                        intersections.add(PdfLineIntersection(mid, mid, hashSetOf(a, b)))
                     }
                 }
             }
@@ -78,8 +78,8 @@ class IntersectionDetector {
         return intersections
     }
 
-    private fun List<PdfLineIntersectionPoint>.combineIdentical(combineTolerance: Double): List<PdfLineIntersectionPoint> {
-        val clusters = fold(mutableListOf<MutableList<PdfLineIntersectionPoint>>()) { clusters, intersection ->
+    private fun List<PdfLineIntersection>.combineIdentical(combineTolerance: Double): List<PdfLineIntersection> {
+        val clusters = fold(mutableListOf<MutableList<PdfLineIntersection>>()) { clusters, intersection ->
             val closest = clusters.firstOrNull { cluster ->
                 cluster.any { it.midpoint.distance(intersection.midpoint) <= combineTolerance }
             }
@@ -94,13 +94,13 @@ class IntersectionDetector {
             val allLines = hashSetOf<PdfLine>()
             cluster.forEach { allLines.addAll(it.lines) }
             val mid = Point2D.Double(avgX, avgY)
-            PdfLineIntersectionPoint(mid, mid, allLines)
+            PdfLineIntersection(mid, mid, allLines)
         }
     }
 
-    private fun List<PdfLineIntersectionPoint>.alignToGrid(tolerance: Double = 0.3): Pair<SortedSet<Double>, SortedSet<Double>> {
+    private fun List<PdfLineIntersection>.alignToGrid(tolerance: Double = 0.3): Pair<SortedSet<Double>, SortedSet<Double>> {
         fun alignOnAxis(accessor: Point2D.() -> Double, setter: Point2D.(Double) -> Unit): List<Double> {
-            val hasBeenAligned = hashSetOf<PdfLineIntersectionPoint>()
+            val hasBeenAligned = hashSetOf<PdfLineIntersection>()
             val resutls = mutableListOf<Double>()
 
             for (intersection in this) {

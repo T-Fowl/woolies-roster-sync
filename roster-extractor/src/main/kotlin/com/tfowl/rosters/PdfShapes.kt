@@ -10,8 +10,6 @@ import kotlin.math.abs
 
 internal fun Matrix.prettyPrint(): String = "[scale: ($scaleX, $scaleY), translate: ($translateX, $translateY)]"
 
-internal fun Float.approx(other: Float, eps: Float = 0.001f): Boolean = abs(this - other) <= eps
-
 data class PdfLine(
         val start: Point2D,
         val end: Point2D
@@ -95,7 +93,7 @@ private class PdfElementsStreamEngine(page: PDPage,
 
     override fun curveTo(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float) {
         // A lot of lines / paths seem to be terminated with an empty curveTo
-        if (!x1.approx(x3) || !y1.approx(y3)) {
+        if (abs(x1 - x3) > 0.001f || abs(y1 - y3) > 0.001f) {
             debug { "curveTo($x1, $y1, $x2, $y2, $x3, $y3)" }
         }
     }

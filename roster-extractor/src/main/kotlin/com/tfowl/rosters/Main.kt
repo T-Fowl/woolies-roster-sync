@@ -65,7 +65,7 @@ fun enclosedAreas(detection: IntersectionDetectorResults): Set<EnclosedArea> {
 
 private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorResults) {
     visualiseEach(detection.lines) { line ->
-        graphics.draw(Color.BLACK, Line2D.Float(line.start, line.end))
+        graphics.draw(Color.BLACK, Line2D.Double(line.start, line.end))
     }
 
     visualiseEach(detection.intersections) { intersection ->

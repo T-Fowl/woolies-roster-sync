@@ -84,8 +84,8 @@ private class PdfElementsStreamEngine(page: PDPage,
     override fun lineTo(x: Float, y: Float) {
         debug { "lineTo($x, $y)" }
 
-        val start = Point2D.Float(position.x, position.y)
-        val end = Point2D.Float(x, y)
+        val start = Point2D.Double(position.x.toDouble(), position.y.toDouble())
+        val end = Point2D.Double(x.toDouble(), y.toDouble())
         lines.add(PdfLine(start, end))
 
         position.setLocation(x, y)

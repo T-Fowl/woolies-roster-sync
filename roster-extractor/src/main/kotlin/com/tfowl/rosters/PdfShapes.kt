@@ -36,16 +36,16 @@ data class PdfText(
         val text: String
 )
 
-data class PdfVisuals(
+data class PdfShapes(
         val lines: List<PdfLine>,
         val rectangles: List<PdfRectangle>,
         val texts: List<PdfText>
 )
 
-fun PDPage.getVisualElements(): PdfVisuals {
+fun PDPage.getVisualElements(): PdfShapes {
     val engine = PdfElementsStreamEngine(this)
     engine.processPage(this)
-    return PdfVisuals(engine.lines, engine.rectangles, engine.texts)
+    return PdfShapes(engine.lines, engine.rectangles, engine.texts)
 }
 
 private class PdfElementsStreamEngine(page: PDPage,

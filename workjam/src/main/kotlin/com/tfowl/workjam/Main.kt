@@ -9,7 +9,7 @@ import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.tfowl.workjam.internal.WorkjamEndpoints
-import com.tfowl.workjam.model.Employee
+import com.tfowl.workjam.model.EventType
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -27,7 +27,12 @@ fun OffsetDateTime.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): Local
 
 fun OffsetDateTime.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = atZoneSameInstant(zone).toLocalDate()
 
-private suspend fun reauthenticate(ds: DataStore<String>, userIdentifier: String, workjam: WorkjamEndpoints, override: String? = null): String {
+private suspend fun reauthenticate(
+    ds: DataStore<String>,
+    userIdentifier: String,
+    workjam: WorkjamEndpoints,
+    override: String? = null
+): String {
     val old = requireNotNull(override ?: ds[userIdentifier]) { "No token stored for $userIdentifier" }
     val response = workjam.auth(old)
     ds[userIdentifier] = response.token
@@ -64,6 +69,7 @@ fun shiftSummary(
 }
 
 private fun OffsetDateTime.toGoogleDateTime(): DateTime = DateTime(toInstant().toEpochMilli())
+
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
@@ -123,7 +129,7 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val zoneId = ZoneId.of("Australia/Sydney")
 
-    val employeeCache = hashMapOf<String, Employee>().asSuspendingMap()
+    val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails")
 
     val mf = DefaultMustacheFactory()
     val descriptionTemplate = mf.compile("event-description.hbs")
@@ -131,7 +137,11 @@ suspend fun main(vararg args: String) = coroutineScope {
     val batch = GoogleCalendar.calendar.batch()
 
     for (shift in workjamShifts) {
-        val coworkingPositions = workjam.coworkers(token, WOOLIES, shift.location.id, shift.id)
+
+        val coworkingPositions = when (shift.type) {
+            EventType.SHIFT -> workjam.coworkers(token, WOOLIES, shift.location.id, shift.id)
+            EventType.AVAILABILITY_TIME_OFF -> emptyList()
+        }
 
         val start = shift.startDateTime.toLocalDateTime(zoneId)
         val end = shift.endDateTime.toLocalDateTime(zoneId)
@@ -140,20 +150,35 @@ suspend fun main(vararg args: String) = coroutineScope {
             CoworkerPositionViewModel(
                 position = position.externalCode,
                 coworkers = coworkers.map { coworker ->
-                    val employeeDetails =
-                        employeeCache.computeIfAbsent(coworker.id) { workjam.employee(token, WOOLIES, it) }
+                    val employeeDetails = employeeDataStore.computeSerializableIfAbsent(json, coworker.id) { id ->
+                        workjam.employee(token, WOOLIES, id)
+                    }
                     val employeeNumber = employeeDetails.externalCode ?: ""
-                    val avatarUrl = coworker.avatarUrl?.let { it.replace("/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face") }
+                    val avatarUrl = coworker.avatarUrl?.let {
+                        it.replace(
+                            "/image/upload",
+                            "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                        )
+                    }
                     CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
                 }.sortedBy { it.firstName })
         }.sortedBy { it.position })
 
         val description = descriptionTemplate.execute(vm)
 
+        val summary = when (shift.type) {
+            EventType.SHIFT -> shiftSummary(
+                start.toLocalTime(),
+                end.toLocalTime(),
+                shift.title ?: "ERROR: MISSING TITLE"
+            )
+            EventType.AVAILABILITY_TIME_OFF -> "Time Off"
+        }
+
         val event = Event()
             .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
             .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
-            .setSummary(shiftSummary(start.toLocalTime(), end.toLocalTime(), shift.title))
+            .setSummary(summary)
             .setICalUID("${shift.id}@workjam.tfowl.com")
             .setDescription(description)
 
@@ -182,4 +207,12 @@ suspend fun main(vararg args: String) = coroutineScope {
     }
 
     batch.execute()
+}
+
+@Suppress("BlockingMethodInNonBlockingContext")
+internal suspend fun <V : java.io.Serializable> DataStore<V>.computeIfAbsent(
+    key: String,
+    provider: suspend (String) -> V
+): V {
+    return get(key) ?: provider(key).also { set(key, it) }
 }

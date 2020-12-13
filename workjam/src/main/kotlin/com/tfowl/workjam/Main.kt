@@ -1,6 +1,5 @@
 package com.tfowl.workjam
 
-import com.github.mustachejava.DefaultMustacheFactory
 import com.google.api.client.util.DateTime
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
@@ -23,15 +22,15 @@ import java.time.*
 const val WOOLIES = "6773940"
 
 fun OffsetDateTime.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): LocalDateTime =
-    atZoneSameInstant(zone).toLocalDateTime()
+        atZoneSameInstant(zone).toLocalDateTime()
 
 fun OffsetDateTime.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = atZoneSameInstant(zone).toLocalDate()
 
 private suspend fun reauthenticate(
-    ds: DataStore<String>,
-    userIdentifier: String,
-    workjam: WorkjamEndpoints,
-    override: String? = null
+        ds: DataStore<String>,
+        userIdentifier: String,
+        workjam: WorkjamEndpoints,
+        override: String? = null
 ): String {
     val old = requireNotNull(override ?: ds[userIdentifier]) { "No token stored for $userIdentifier" }
     val response = workjam.auth(old)
@@ -42,26 +41,21 @@ private suspend fun reauthenticate(
 private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
 fun shiftSummary(
-    start: LocalTime,
-    end: LocalTime,
-    default: String
+        start: LocalTime,
+        end: LocalTime,
+        default: String
 ): String {
 
     /* Trucks */
-    when {
-        start == LocalTime.of(5, 30) -> return "AM Trucks"
-        start == LocalTime.of(13, 0) -> return "PM Trucks"
-    }
-
-    /* Special-case */
-    when {
-        start == LocalTime.of(7, 30) -> return "Picking AM/CCPM"
+    when (start) {
+        LocalTime.of(5, 30) -> return "AM Trucks"
+        LocalTime.of(13, 0) -> return "PM Trucks"
     }
 
     /* General Picking */
-    when {
-        start.hour in 0..13 -> return "Picking AM"
-        start.hour in 16..23 -> return "Picking PM"
+    when (start.hour) {
+        in 0..13 -> return "Picking AM"
+        in 16..23 -> return "Picking PM"
     }
 
     /* idk */
@@ -70,6 +64,27 @@ fun shiftSummary(
 
 private fun OffsetDateTime.toGoogleDateTime(): DateTime = DateTime(toInstant().toEpochMilli())
 
+@OptIn(ExperimentalSerializationApi::class)
+private fun createWorkjamEndpoints(json: Json): WorkjamEndpoints {
+    val httpClient = OkHttpClient.Builder()
+            .addInterceptor(
+                    HeadersInterceptor(
+                            "Accept-Language: en",
+                            "Origin: https://app.workjam.com",
+                            "Referer: https://app.workjam.com/"
+                    )
+            )
+            .addInterceptor(LoggingInterceptor())
+
+
+    val retrofit = Retrofit.Builder()
+            .client(httpClient.build())
+            .baseUrl("https://prod-aus-gcp-api.workjam.com")
+            .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
+            .build()
+
+    return retrofit.create()
+}
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
@@ -86,53 +101,30 @@ suspend fun main(vararg args: String) = coroutineScope {
         ignoreUnknownKeys = true
     }
 
-    val httpClient = OkHttpClient.Builder()
-        .addInterceptor(
-            HeadersInterceptor(
-                "Accept-Language: en",
-                "Origin: https://app.workjam.com",
-                "Referer: https://app.workjam.com/"
-            )
-        )
-        .addInterceptor { chain ->
-            val request = chain.request()
-            println(request)
-            val response = chain.proceed(request)
-            println(response)
-            response
-        }
-
-    val retrofit = Retrofit.Builder()
-        .client(httpClient.build())
-        .baseUrl("https://prod-aus-gcp-api.workjam.com")
-        .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
-        .build()
-
-    val workjam = retrofit.create<WorkjamEndpoints>()
+    val workjam = createWorkjamEndpoints(json)
     val token = reauthenticate(dsf.getDataStore("WorkjamTokens"), "user", workjam, TOKEN_OVERRIDE)
 
     val syncPeriodStart = OffsetDateTime.now()
     val syncPeriodEnd = OffsetDateTime.now().plusMonths(2)
 
     val workjamShifts = workjam.events(
-        token,
-        WOOLIES, USER_ID,
-        syncPeriodStart, syncPeriodEnd
+            token,
+            WOOLIES, USER_ID,
+            syncPeriodStart, syncPeriodEnd
     )
 
     val googleEvents = GoogleCalendar.calendar.events().list(CALENDAR_ID)
-        .setMaxResults(2500)
-        .setTimeMin(syncPeriodStart.toGoogleDateTime())
-        .setTimeMax(syncPeriodEnd.toGoogleDateTime())
-        .setShowDeleted(true)
-        .execute().items
+            .setMaxResults(2500)
+            .setTimeMin(syncPeriodStart.toGoogleDateTime())
+            .setTimeMax(syncPeriodEnd.toGoogleDateTime())
+            .setShowDeleted(true)
+            .execute().items
 
     val zoneId = ZoneId.of("Australia/Sydney")
 
     val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails")
 
-    val mf = DefaultMustacheFactory()
-    val descriptionTemplate = mf.compile("event-description.hbs")
+    val descriptionGenerator = MustacheDescriptionGenerator("event-description.hbs")
 
     val batch = GoogleCalendar.calendar.batch()
 
@@ -148,71 +140,61 @@ suspend fun main(vararg args: String) = coroutineScope {
 
         val vm = DescriptionViewModel(coworkerPositions = coworkingPositions.map { (coworkers, position) ->
             CoworkerPositionViewModel(
-                position = position.externalCode,
-                coworkers = coworkers.map { coworker ->
-                    val employeeDetails = employeeDataStore.computeSerializableIfAbsent(json, coworker.id) { id ->
-                        workjam.employee(token, WOOLIES, id)
-                    }
-                    val employeeNumber = employeeDetails.externalCode ?: ""
-                    val avatarUrl = coworker.avatarUrl?.let {
-                        it.replace(
-                            "/image/upload",
-                            "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                    position = position.externalCode,
+                    coworkers = coworkers.map { coworker ->
+                        val employeeDetails = employeeDataStore.computeSerializableIfAbsent(json, coworker.id) { id ->
+                            workjam.employee(token, WOOLIES, id)
+                        }
+                        val employeeNumber = employeeDetails.externalCode ?: ""
+                        val avatarUrl = coworker.avatarUrl?.replace(
+                                "/image/upload",
+                                "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
                         )
-                    }
-                    CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
-                }.sortedBy { it.firstName })
+                        CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
+                    }.sortedBy { it.firstName })
         }.sortedBy { it.position })
 
-        val description = descriptionTemplate.execute(vm)
+        val description = descriptionGenerator.generate(vm)
 
         val summary = when (shift.type) {
             EventType.SHIFT -> shiftSummary(
-                start.toLocalTime(),
-                end.toLocalTime(),
-                shift.title ?: "ERROR: MISSING TITLE"
+                    start.toLocalTime(),
+                    end.toLocalTime(),
+                    shift.title ?: "ERROR: MISSING TITLE"
             )
             EventType.AVAILABILITY_TIME_OFF -> "Time Off"
         }
 
         val event = Event()
-            .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
-            .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
-            .setSummary(summary)
-            .setICalUID("${shift.id}@workjam.tfowl.com")
-            .setDescription(description)
+                .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
+                .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
+                .setSummary(summary)
+                .setICalUID("${shift.id}@workjam.tfowl.com")
+                .setDescription(description)
 
         val existingGoogleEvent = googleEvents.find { it.iCalUID == event.iCalUID }
 
         if (null != existingGoogleEvent) {
             GoogleCalendar.calendar.events()
-                .update(
-                    CALENDAR_ID,
-                    existingGoogleEvent.id,
-                    event.setId(existingGoogleEvent.id).setStatus("confirmed")
-                )
-                .queue(batch,
-                    success = { println("Updated existing event ${event.iCalUID}") },
-                    failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
-                )
+                    .update(
+                            CALENDAR_ID,
+                            existingGoogleEvent.id,
+                            event.setId(existingGoogleEvent.id).setStatus("confirmed")
+                    )
+                    .queue(batch,
+                           success = { println("Updated existing event ${event.iCalUID}") },
+                           failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
+                    )
         } else {
             GoogleCalendar.calendar.events()
-                .insert(CALENDAR_ID, event).queue(batch,
-                    success = { println("Created event ${event.iCalUID}") },
-                    failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
-                )
+                    .insert(CALENDAR_ID, event).queue(batch,
+                                                      success = { println("Created event ${event.iCalUID}") },
+                                                      failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
+                    )
         }
 
         println("Queueued shift ${event.summary} [${event.start}-${event.end}] (${event.iCalUID})")
     }
 
     batch.execute()
-}
-
-@Suppress("BlockingMethodInNonBlockingContext")
-internal suspend fun <V : java.io.Serializable> DataStore<V>.computeIfAbsent(
-    key: String,
-    provider: suspend (String) -> V
-): V {
-    return get(key) ?: provider(key).also { set(key, it) }
 }

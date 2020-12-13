@@ -1,6 +1,5 @@
 package com.tfowl.workjam
 
-import com.github.mustachejava.DefaultMustacheFactory
 import com.google.api.client.util.DateTime
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
@@ -125,8 +124,7 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails")
 
-    val mf = DefaultMustacheFactory()
-    val descriptionTemplate = mf.compile("event-description.hbs")
+    val descriptionGenerator = MustacheDescriptionGenerator("event-description.hbs")
 
     val batch = GoogleCalendar.calendar.batch()
 
@@ -158,7 +156,7 @@ suspend fun main(vararg args: String) = coroutineScope {
                 }.sortedBy { it.firstName })
         }.sortedBy { it.position })
 
-        val description = descriptionTemplate.execute(vm)
+        val description = descriptionGenerator.generate(vm)
 
         val summary = when (shift.type) {
             EventType.SHIFT -> shiftSummary(

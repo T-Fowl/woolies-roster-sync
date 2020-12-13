@@ -94,13 +94,7 @@ suspend fun main(vararg args: String) = coroutineScope {
                 "Referer: https://app.workjam.com/"
             )
         )
-        .addInterceptor { chain ->
-            val request = chain.request()
-            println(request)
-            val response = chain.proceed(request)
-            println(response)
-            response
-        }
+        .addInterceptor(LoggingInterceptor())
 
     val retrofit = Retrofit.Builder()
         .client(httpClient.build())

@@ -146,12 +146,10 @@ suspend fun main(vararg args: String) = coroutineScope {
                             workjam.employee(token, WOOLIES, id)
                         }
                         val employeeNumber = employeeDetails.externalCode ?: ""
-                        val avatarUrl = coworker.avatarUrl?.let {
-                            it.replace(
-                                    "/image/upload",
-                                    "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                            )
-                        }
+                        val avatarUrl = coworker.avatarUrl?.replace(
+                                "/image/upload",
+                                "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                        )
                         CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
                     }.sortedBy { it.firstName })
         }.sortedBy { it.position })

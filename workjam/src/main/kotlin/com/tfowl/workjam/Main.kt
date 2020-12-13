@@ -65,6 +65,27 @@ fun shiftSummary(
 
 private fun OffsetDateTime.toGoogleDateTime(): DateTime = DateTime(toInstant().toEpochMilli())
 
+@OptIn(ExperimentalSerializationApi::class)
+private fun createWorkjamEndpoints(json: Json): WorkjamEndpoints {
+    val httpClient = OkHttpClient.Builder()
+        .addInterceptor(
+            HeadersInterceptor(
+                "Accept-Language: en",
+                "Origin: https://app.workjam.com",
+                "Referer: https://app.workjam.com/"
+            )
+        )
+        .addInterceptor(LoggingInterceptor())
+
+
+    val retrofit = Retrofit.Builder()
+        .client(httpClient.build())
+        .baseUrl("https://prod-aus-gcp-api.workjam.com")
+        .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
+        .build()
+
+    return retrofit.create()
+}
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
@@ -81,23 +102,7 @@ suspend fun main(vararg args: String) = coroutineScope {
         ignoreUnknownKeys = true
     }
 
-    val httpClient = OkHttpClient.Builder()
-        .addInterceptor(
-            HeadersInterceptor(
-                "Accept-Language: en",
-                "Origin: https://app.workjam.com",
-                "Referer: https://app.workjam.com/"
-            )
-        )
-        .addInterceptor(LoggingInterceptor())
-
-    val retrofit = Retrofit.Builder()
-        .client(httpClient.build())
-        .baseUrl("https://prod-aus-gcp-api.workjam.com")
-        .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
-        .build()
-
-    val workjam = retrofit.create<WorkjamEndpoints>()
+    val workjam = createWorkjamEndpoints(json)
     val token = reauthenticate(dsf.getDataStore("WorkjamTokens"), "user", workjam, TOKEN_OVERRIDE)
 
     val syncPeriodStart = OffsetDateTime.now()

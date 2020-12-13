@@ -48,20 +48,15 @@ fun shiftSummary(
 ): String {
 
     /* Trucks */
-    when {
-        start == LocalTime.of(5, 30) -> return "AM Trucks"
-        start == LocalTime.of(13, 0) -> return "PM Trucks"
-    }
-
-    /* Special-case */
-    when {
-        start == LocalTime.of(7, 30) -> return "Picking AM/CCPM"
+    when (start) {
+        LocalTime.of(5, 30) -> return "AM Trucks"
+        LocalTime.of(13, 0) -> return "PM Trucks"
     }
 
     /* General Picking */
-    when {
-        start.hour in 0..13 -> return "Picking AM"
-        start.hour in 16..23 -> return "Picking PM"
+    when (start.hour) {
+        in 0..13 -> return "Picking AM"
+        in 16..23 -> return "Picking PM"
     }
 
     /* idk */
@@ -201,12 +196,4 @@ suspend fun main(vararg args: String) = coroutineScope {
     }
 
     batch.execute()
-}
-
-@Suppress("BlockingMethodInNonBlockingContext")
-internal suspend fun <V : java.io.Serializable> DataStore<V>.computeIfAbsent(
-    key: String,
-    provider: suspend (String) -> V
-): V {
-    return get(key) ?: provider(key).also { set(key, it) }
 }

@@ -45,15 +45,19 @@ data class PdfShapes(
 fun PDPage.getVisualElements(): PdfShapes {
     val engine = PdfElementsStreamEngine(this)
     engine.processPage(this)
-    return PdfShapes(engine.lines, engine.rectangles, engine.texts)
+    return engine.shapes()
 }
 
 private class PdfElementsStreamEngine(page: PDPage,
                                       private val debug: Boolean = false) : PDFGraphicsStreamEngine(page) {
 
-    val lines = mutableListOf<PdfLine>()
-    val rectangles = mutableListOf<PdfRectangle>()
-    val texts = mutableListOf<PdfText>()
+    private val lines = mutableListOf<PdfLine>()
+    private val rectangles = mutableListOf<PdfRectangle>()
+    private val texts = mutableListOf<PdfText>()
+
+    fun shapes(): PdfShapes = PdfShapes(
+            lines, rectangles, texts
+    )
 
     private val position = Point2D.Float(0.0f, 0.0f)
 
@@ -126,13 +130,14 @@ private class PdfElementsStreamEngine(page: PDPage,
         debug { "shadingFill($shadingName)" }
     }
 
-    override fun showTextString(string: ByteArray) {
-        val text = string.decodeToString()
-
+    private fun showTextString(text: String) {
         debug { """showTextString("$text", matrix=${textMatrix.prettyPrint()})""" }
 
         texts.add(PdfText(textMatrix.clone(), text))
+    }
 
+    override fun showTextString(string: ByteArray) {
+        showTextString(string.decodeToString())
         super.showTextString(string)
     }
 }

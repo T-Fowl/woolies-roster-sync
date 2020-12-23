@@ -142,7 +142,7 @@ suspend fun main(vararg args: String) = coroutineScope {
             CoworkerPositionViewModel(
                     position = position.externalCode,
                     coworkers = coworkers.map { coworker ->
-                        val employeeDetails = employeeDataStore.computeSerializableIfAbsent(json, coworker.id) { id ->
+                        val employeeDetails = employeeDataStore.computeIfAbsent(json, coworker.id) { id ->
                             workjam.employee(token, WOOLIES, id)
                         }
                         val employeeNumber = employeeDetails.externalCode ?: ""

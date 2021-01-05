@@ -1,4 +1,4 @@
-package com.tfowl.workjam.model
+package com.tfowl.workjam.client.model
 
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind

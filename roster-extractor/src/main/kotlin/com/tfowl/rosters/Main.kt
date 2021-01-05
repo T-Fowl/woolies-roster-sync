@@ -10,7 +10,6 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 fun Double.roundToEighth(): Double = (this * 8.0).roundToInt() / 8.0
@@ -36,33 +35,6 @@ Things to consider:
 
  */
 
-data class EnclosedArea(val lowerX: Double, val upperX: Double,
-                        val lowerY: Double, val upperY: Double) {
-
-    val centerX = 0.5 * (lowerX + upperX)
-    val centerY = 0.5 * (lowerY + upperY)
-}
-
-fun enclosedAreas(detection: IntersectionDetectorResults): Set<EnclosedArea> {
-    val areas = mutableSetOf<EnclosedArea>()
-
-    val intersections = detection.intersections
-    for (intersection in intersections) {
-        val point = intersection.midpoint
-        val sameX = intersections.filter { abs(it.midpoint.x - point.x) <= 0.3 && it.midpoint !== point }
-                .sortedBy { it.midpoint.y }
-        val sameY = intersections.filter { abs(it.midpoint.y - point.y) <= 0.3 && it.midpoint !== point }
-                .sortedBy { it.midpoint.x }
-
-        val nextX = sameY.firstOrNull { it.midpoint.x > point.x }?.midpoint?.x ?: continue
-        val nextY = sameX.firstOrNull { it.midpoint.y > point.y }?.midpoint?.y ?: continue
-
-        areas.add(EnclosedArea(point.x, nextX, point.y, nextY))
-    }
-
-    return areas
-}
-
 private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorResults) {
     visualiseEach(detection.lines) { line ->
         graphics.draw(Color.BLACK, Line2D.Double(line.start, line.end))
@@ -86,19 +58,16 @@ private fun obtainTable(page: PDPage, debugger: VisualDebugger? = null): Table {
 
     debugger?.visualiseDetection(detection)
 
-    val areas = enclosedAreas(detection)
+//    debugger?.visualiseEach(areas) { area ->
+//        graphics.draw(Color.PINK, CenteredEllipse(area.centerX, area.centerY, 5.0))
+//    }
 
-    debugger?.visualiseEach(areas) { area ->
-        graphics.draw(Color.PINK, CenteredEllipse(area.centerX, area.centerY, 5.0))
-    }
-
-
-    return TableExtractor().extract(page, areas, detection)
+    return TableExtractor().extract(page, detection)
 }
 
 data class LocalDatePeriod(val start: LocalDate, val end: LocalDate)
 
-data class RosterSection(
+data class DepartmentHeader(
         val siteCode: Int,
         val siteName: String,
         val department: String,
@@ -112,22 +81,36 @@ data class ShiftTimes(val from: LocalTime, val to: LocalTime)
 
 data class Shift(val date: LocalDate, val period: ShiftTimes?, val department: String, val text: String)
 
-fun main() {
-    val document = PDDocument.load(File("3216_week_0.pdf"))
+data class DepartmentRoster(val department: DepartmentHeader,
+                            val employees: Set<Employee>,
+                            val employeeJobs: Map<Employee, Set<String>>,
+                            val employeeJobShifts: Map<Pair<Employee, String>, Set<Shift>>)
 
+fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
     val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     val localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h.mm a")
 
+    val departmentRosters = hashSetOf<DepartmentRoster>()
+    var section: DepartmentHeader? = null
     val employees = mutableSetOf<Employee>()
-    val employeesToDepartments = mutableMapOf<Employee, MutableSet<String>>()
-    val employeesDepartmentsToJobs = mutableMapOf<Pair<Employee, String>, MutableSet<String>>()
-    val employeesDepartmentJobsToShifts = mutableMapOf<Triple<Employee, String, String>, MutableSet<Shift>>()
+    val employeesToJobs = mutableMapOf<Employee, MutableSet<String>>()
+    val employeesJobsToShifts = mutableMapOf<Pair<Employee, String>, MutableSet<Shift>>()
 
-    var section: RosterSection? = null
-    for (pageIndex in 0 until document.numberOfPages) {
-        val page = document.getPage(pageIndex)
-        val table = obtainTable(page, null)
+    fun nextDepartment() {
+        section?.let { department ->
+            departmentRosters.add(DepartmentRoster(
+                    department,
+                    employees.toSet(),
+                    employeesToJobs.toMap(),
+                    employeesJobsToShifts.toMap()
+            ))
+            employees.clear()
+            employeesToJobs.clear()
+            employeesJobsToShifts.clear()
+        }
+    }
 
+    for (table in this) {
         if ("Location Schedule" in table[0, 0].cell.content) {
             val header = table[0, 0].cell.content
 
@@ -135,13 +118,15 @@ fun main() {
             val match = regex.find(header) ?: error("Unmatched header")
 
 
+           nextDepartment()
+
             section = with(match.groups) {
-                RosterSection(getValue("siteid").toInt(),
-                              getValue("sitename"),
-                              getValue("department"),
-                              LocalDatePeriod(LocalDate.parse(getValue("from"), localDateFormatter),
-                                              LocalDate.parse(getValue("to"), localDateFormatter)),
-                              LocalDate.parse(getValue("executed"), localDateTimeFormatter))
+                DepartmentHeader(getValue("siteid").toInt(),
+                                 getValue("sitename"),
+                                 getValue("department"),
+                                 LocalDatePeriod(LocalDate.parse(getValue("from"), localDateFormatter),
+                                                 LocalDate.parse(getValue("to"), localDateFormatter)),
+                                 LocalDate.parse(getValue("executed"), localDateTimeFormatter))
             }
         }
 
@@ -159,8 +144,7 @@ fun main() {
             val department = section!!.department
 
             val employee = Employee(name).also { employees.add(it) }
-            employeesToDepartments.computeIfAbsent(employee) { mutableSetOf() }.add(department)
-            employeesDepartmentsToJobs.computeIfAbsent(employee to department) { mutableSetOf() }.add(job)
+            employeesToJobs.computeIfAbsent(employee) { mutableSetOf() }.add(job)
 
 
             for ((date, columnIndex) in datesColumns) {
@@ -172,23 +156,35 @@ fun main() {
                                    LocalTime.parse(groups.getValue("to") + "M", formatter))
                     }
 
-                    employeesDepartmentJobsToShifts.computeIfAbsent(Triple(employee, department, job)) { mutableSetOf() }
+                    employeesJobsToShifts.computeIfAbsent(employee to job) { mutableSetOf() }
                             .add(Shift(date, times, department, rosterText))
                 }
             }
         }
     }
 
-    println("Employees:")
-    employees.forEach { employee ->
-        println(employee)
-        employeesToDepartments[employee]?.forEach { department ->
-            println("\t$department")
+    nextDepartment()
 
-            employeesDepartmentsToJobs[employee to department]?.forEach { job ->
+    return departmentRosters
+}
+
+fun main() {
+    val document = PDDocument.load(File("3216_week_1.pdf"))
+
+
+    val tables = document.pages.map { obtainTable(it) }
+    val rosters = tables.extractDepartmentRosters()
+
+    rosters.forEach { department ->
+        println(department.department)
+
+        department.employees.forEach { employee ->
+            println("\t$employee")
+
+            department.employeeJobs[employee]?.forEach { job ->
                 println("\t\t$job")
 
-                employeesDepartmentJobsToShifts[Triple(employee, department, job)]?.forEach { shift ->
+                department.employeeJobShifts[employee to job]?.forEach { shift ->
                     println("\t\t\t$shift")
                 }
             }

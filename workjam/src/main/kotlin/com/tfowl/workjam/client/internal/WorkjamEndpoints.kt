@@ -1,6 +1,6 @@
 package com.tfowl.workjam.internal
 
-import com.tfowl.workjam.model.*
+import com.tfowl.workjam.client.model.*
 import retrofit2.http.*
 import java.time.OffsetDateTime
 

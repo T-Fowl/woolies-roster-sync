@@ -8,7 +8,7 @@ import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
 import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
 import com.tfowl.workjam.internal.WorkjamEndpoints
-import com.tfowl.workjam.model.EventType
+import com.tfowl.workjam.client.model.EventType
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -131,7 +131,7 @@ suspend fun main(vararg args: String) = coroutineScope {
     for (shift in workjamShifts) {
 
         val coworkingPositions = when (shift.type) {
-            EventType.SHIFT -> workjam.coworkers(token, WOOLIES, shift.location.id, shift.id)
+            EventType.SHIFT                 -> workjam.coworkers(token, WOOLIES, shift.location.id, shift.id)
             EventType.AVAILABILITY_TIME_OFF -> emptyList()
         }
 
@@ -157,7 +157,7 @@ suspend fun main(vararg args: String) = coroutineScope {
         val description = descriptionGenerator.generate(vm)
 
         val summary = when (shift.type) {
-            EventType.SHIFT -> shiftSummary(
+            EventType.SHIFT                 -> shiftSummary(
                     start.toLocalTime(),
                     end.toLocalTime(),
                     shift.title ?: "ERROR: MISSING TITLE"

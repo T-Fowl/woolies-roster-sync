@@ -3,14 +3,7 @@ package com.tfowl.rosters
 import com.jakewharton.picnic.Table
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
-import java.awt.Color
-import java.awt.geom.Line2D
 import java.io.File
-import java.time.DayOfWeek
-import java.time.LocalDate
-import java.time.LocalTime
-import java.time.format.DateTimeFormatter
-import kotlin.math.roundToInt
 
 /*
 
@@ -30,45 +23,28 @@ Things to consider:
 
  */
 
-private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorResults) {
-    visualiseEach("intersection-detection", detection.lines) { line ->
-        draw(Color.BLACK, Line2D.Double(line.start, line.end))
-    }
-
-    visualiseEach("intersection-detection", detection.intersections) { intersection ->
-        draw(Color.RED, CenteredEllipse(intersection.midpoint.x, intersection.midpoint.y, 4.0))
-    }
-
-    visualiseEach("intersection-detection", detection.horizontalGridLines) {
-        draw(Color.PINK, Line2D.Double(0.0, it, detection.page.cropBox.width.toDouble(), it))
-    }
-
-    visualiseEach("intersection-detection", detection.verticalGridLines) {
-        draw(Color.PINK, Line2D.Double(it, 0.0, it, detection.page.cropBox.height.toDouble()))
-    }
-}
-
 private fun obtainTable(page: PDPage, debugger: VisualDebugger): Table {
     val detection = CombinatorialIntersectionDetector()
-        .detect(page, detectionTolerance = 0.275, combineTolerance = 0.275, alignmentTolerance = 2.0)
+        .detect(
+            page,
+            detectionTolerance = 0.275,
+            combineTolerance = 0.275,
+            alignmentTolerance = 2.0,
+            debugger
+        )
 
-    debugger.visualiseDetection(detection)
-
-//    debugger.visualiseEach("grid-areas", detection.aread) { area ->
-//        graphics.draw(Color.PINK, CenteredEllipse(area.centerX, area.centerY, 5.0))
-//    }
-
-    return TableExtractor().extract(page, detection)
+    return TableExtractor().extract(page, detection, debugger)
 }
 
 fun main(vararg args: String) {
     require(args.isNotEmpty()) { "Usage: [exec] roster-file" }
 
     val document = PDDocument.load(File(args[0]))
-    val visualiser: VisualDebugger = NoOpVisualDebugger()
 
-
-    val tables = document.pages.map { obtainTable(it, visualiser) }
+    val tables = document.pages.map { page ->
+        val visualiser = NoOpVisualDebugger()
+        obtainTable(page, visualiser)
+    }
     val rosters = tables.extractDepartmentRosters()
 
     rosters.forEach { department ->

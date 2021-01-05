@@ -5,11 +5,14 @@ import com.jakewharton.picnic.Table
 import com.jakewharton.picnic.table
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.text.PDFTextStripperByArea
+import java.awt.Color
 import java.awt.geom.Rectangle2D
 import kotlin.math.abs
 
-internal data class EnclosedArea(val lowerX: Double, val upperX: Double,
-                        val lowerY: Double, val upperY: Double) {
+internal data class EnclosedArea(
+    val lowerX: Double, val upperX: Double,
+    val lowerY: Double, val upperY: Double
+) {
 
     val centerX = 0.5 * (lowerX + upperX)
     val centerY = 0.5 * (lowerY + upperY)
@@ -22,9 +25,9 @@ internal fun enclosedAreas(detection: IntersectionDetectorResults): Set<Enclosed
     for (intersection in intersections) {
         val point = intersection.midpoint
         val sameX = intersections.filter { abs(it.midpoint.x - point.x) <= 0.3 && it.midpoint !== point }
-                .sortedBy { it.midpoint.y }
+            .sortedBy { it.midpoint.y }
         val sameY = intersections.filter { abs(it.midpoint.y - point.y) <= 0.3 && it.midpoint !== point }
-                .sortedBy { it.midpoint.x }
+            .sortedBy { it.midpoint.x }
 
         val nextX = sameY.firstOrNull { it.midpoint.x > point.x }?.midpoint?.x ?: continue
         val nextY = sameX.firstOrNull { it.midpoint.y > point.y }?.midpoint?.y ?: continue
@@ -35,12 +38,18 @@ internal fun enclosedAreas(detection: IntersectionDetectorResults): Set<Enclosed
     return areas
 }
 
-data class CellLocation(val row: Int, val rowSpan: Int,
-                        val column: Int, val columnSpan: Int)
+data class CellLocation(
+    val row: Int, val rowSpan: Int,
+    val column: Int, val columnSpan: Int
+)
 
 class TableExtractor {
-    fun extract(page: PDPage, detection: IntersectionDetectorResults): Table {
+    fun extract(page: PDPage, detection: IntersectionDetectorResults, debugger: VisualDebugger): Table {
         val areas = enclosedAreas(detection)
+
+        debugger.visualiseEach("grid-areas", areas) { area ->
+            draw(Color.PINK, CenteredEllipse(area.centerX, area.centerY, 5.0))
+        }
 
         val cellLocations = mutableSetOf<CellLocation>()
         for (area in areas) {
@@ -75,8 +84,8 @@ class TableExtractor {
         stripperByArea.extractRegions(page)
 
         val sortedCellLocations = cellLocations.groupBy { it.row }
-                .mapValues { (_, cells) -> cells.sortedBy { it.column } }
-                .toSortedMap()
+            .mapValues { (_, cells) -> cells.sortedBy { it.column } }
+            .toSortedMap()
 
 
         return table {
@@ -93,8 +102,8 @@ class TableExtractor {
                 row {
                     rowCells.forEach { cell ->
                         val content = stripperByArea.getTextForRegion("${cell.hashCode()}")
-                                .replace(Regex("""\s+"""), " ")
-                                .trim()
+                            .replace(Regex("""\s+"""), " ")
+                            .trim()
                         cell(content) {
                             rowSpan = cell.rowSpan
                             columnSpan = cell.columnSpan

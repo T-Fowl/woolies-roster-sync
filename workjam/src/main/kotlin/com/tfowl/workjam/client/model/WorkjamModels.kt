@@ -16,17 +16,25 @@ data class Location(
     val externalCode: String? = null
 )
 
+// TODO: Work out a way to make this more future-proof
+enum class EventType {
+    SHIFT,
+    AVAILABILITY_TIME_OFF,
+}
+
 
 @Serializable
 data class Event(
     val id: String,
-    val title: String,
-    val type: String,
+    val title: String? = null, // Missing when type == AVAILABILITY_TIME_OFF as opposed to SHIFT
+    val type: EventType,
     @Serializable(with = OffsetDateTimeSerialiser::class)
     val startDateTime: OffsetDateTime,
     @Serializable(with = OffsetDateTimeSerialiser::class)
     val endDateTime: OffsetDateTime,
-    val location: Location
+    val location: Location,
+    val note: String? = null, // Haven't seen a non-null value
+    val recurrence: String? = null, // Haven't seen a non-null value
 )
 
 @Serializable

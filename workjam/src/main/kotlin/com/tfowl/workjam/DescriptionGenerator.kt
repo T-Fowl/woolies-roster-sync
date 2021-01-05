@@ -1,5 +1,6 @@
 package com.tfowl.workjam
 
+import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.Mustache
 import java.io.StringWriter
 
@@ -24,4 +25,18 @@ internal data class CoworkerViewModel(
 ) {
     val hasEmployeeNumber: Boolean = employeeNumber != null
     val hasAvatarUrl: Boolean = avatarUrl != null
+}
+
+internal interface DescriptionGenerator {
+    fun generate(vm: DescriptionViewModel): String
+}
+
+internal class MustacheDescriptionGenerator(templateName: String) : DescriptionGenerator {
+    private val mf = DefaultMustacheFactory()
+    private val template = mf.compile(templateName)
+
+    override fun generate(vm: DescriptionViewModel): String {
+        return template.execute(vm)
+    }
+
 }

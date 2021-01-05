@@ -16,3 +16,18 @@ internal class HeadersInterceptor(vararg headerStrings: String) : Interceptor {
         return chain.proceed(builder.build())
     }
 }
+
+internal class LoggingInterceptor : Interceptor {
+
+    private fun log(msg: () -> Any) {
+        println(msg())
+    }
+
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val request = chain.request()
+        log { request }
+        val response = chain.proceed(request)
+        log { response }
+        return response
+    }
+}

@@ -1,0 +1,85 @@
+package com.tfowl.rosters
+
+import org.apache.pdfbox.pdmodel.PDPage
+import org.joml.Matrix3x2f
+import java.awt.BasicStroke
+import java.awt.Color
+import java.awt.Graphics2D
+import java.awt.Shape
+import java.awt.geom.AffineTransform
+import java.awt.geom.Ellipse2D
+import java.awt.image.BufferedImage
+import kotlin.math.floor
+import kotlin.math.max
+
+class VisualDebugger(page: PDPage) {
+
+    val dpi = 300f
+    val debugImage = page.createRenderableImage(dpi)
+    val pageRenderingTransform = page.displayTransform(dpi)
+
+    val graphics = debugImage.createGraphics().apply {
+        background = Color.WHITE
+        clearRect(0, 0, debugImage.width, debugImage.height)
+        color = Color.BLACK
+        stroke = BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)
+        transform(pageRenderingTransform.get(AffineTransform()))
+    }
+}
+
+fun PDPage.createRenderableImage(dpi: Float = 300.0f): BufferedImage {
+    val scale = dpi / 72.0f
+
+    val widthPt = cropBox.width
+    val heightPt = cropBox.height
+
+    val widthPx = max(floor(widthPt * scale), 1.0f).toInt()
+    val heightPx = max(floor(heightPt * scale), 1.0f).toInt()
+
+    return when (rotation) {
+        90, 270 -> BufferedImage(heightPx, widthPx, BufferedImage.TYPE_INT_ARGB)
+        else    -> BufferedImage(widthPx, heightPx, BufferedImage.TYPE_INT_ARGB)
+    }
+}
+
+fun PDPage.displayTransform(dpi: Float = 300.0f): Matrix3x2f = Matrix3x2f().apply {
+    this.scale(dpi / 72.0f)
+
+    val rotationAngle = rotation
+    val cropBox = cropBox
+    val pageSize = cropBox
+
+    when (rotationAngle) {
+        90 -> this.translate(cropBox.height, 0.0f)
+        270 -> this.translate(0.0f, cropBox.width)
+        180 -> this.translate(cropBox.width, cropBox.height)
+        else -> this.translate(0.0f, 0.0f)
+    }
+
+    // TODO: Given that rotationAngle can only be multiples of 90 degrees, simply swap elements in matrix (floating-point precision errors)
+    this.rotate(Math.toRadians(rotationAngle.toDouble()).toFloat())
+
+    this.translate(0.0f, pageSize.height)
+    this.scale(1.0f, -1.0f)
+    this.translate(-pageSize.lowerLeftX, -pageSize.lowerLeftY)
+}
+
+fun VisualDebugger.visualise(block: VisualDebugger.() -> Unit = {}) {
+    block()
+}
+
+fun <T> VisualDebugger.visualise(arg: T, block: VisualDebugger.(T) -> Unit = {}) {
+    block(arg)
+}
+
+fun <T> VisualDebugger.visualiseEach(arg: Iterable<T>, block: VisualDebugger.(T) -> Unit = {}) {
+    arg.forEach { block(it) }
+}
+
+fun Graphics2D.draw(colour: Color, shape: Shape) {
+    this.color = colour
+    draw(shape)
+}
+
+@Suppress("FunctionName")
+fun CenteredEllipse(x: Double, y: Double, radiusA: Double, radiusB: Double = radiusA): Ellipse2D = Ellipse2D.Double(x - 0.5 * radiusA, y - 0.5 * radiusA, radiusA, radiusB)

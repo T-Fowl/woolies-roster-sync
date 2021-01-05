@@ -26,9 +26,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.0-RC")
 
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.6.0")
-
     implementation("com.google.oauth-client:google-oauth-client-jetty:1.23.0") {
         exclude(group = "org.apache.httpcomponents", module = "httpclient")
     }

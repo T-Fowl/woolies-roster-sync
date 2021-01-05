@@ -1,4 +1,4 @@
-package com.tfowl.workjam.internal
+package com.tfowl.workjam.client.internal
 
 import com.tfowl.workjam.client.model.*
 import retrofit2.http.*

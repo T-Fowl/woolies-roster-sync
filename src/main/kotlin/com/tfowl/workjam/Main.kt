@@ -1,49 +1,44 @@
 package com.tfowl.workjam
 
 import com.google.api.client.util.DateTime
-import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import com.tfowl.workjam.internal.WorkjamEndpoints
+import com.tfowl.workjam.client.WorkjamCredentialStorage
+import com.tfowl.workjam.client.WorkjamProvider
 import com.tfowl.workjam.client.model.EventType
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
-import retrofit2.create
 import java.io.File
 import java.time.*
 
 const val WOOLIES = "6773940"
 
+class DataStoreCredentialStorage(factory: DataStoreFactory) : WorkjamCredentialStorage {
+    private val store = factory.getDataStore<String>("WorkjamTokens")
+
+    override suspend fun retrieve(employeeId: String): String? {
+        return store[employeeId]
+    }
+
+    override suspend fun store(employeeId: String, token: String) {
+        store[employeeId] = token
+    }
+}
+
 fun OffsetDateTime.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): LocalDateTime =
-        atZoneSameInstant(zone).toLocalDateTime()
+    atZoneSameInstant(zone).toLocalDateTime()
 
 fun OffsetDateTime.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate = atZoneSameInstant(zone).toLocalDate()
-
-private suspend fun reauthenticate(
-        ds: DataStore<String>,
-        userIdentifier: String,
-        workjam: WorkjamEndpoints,
-        override: String? = null
-): String {
-    val old = requireNotNull(override ?: ds[userIdentifier]) { "No token stored for $userIdentifier" }
-    val response = workjam.auth(old)
-    ds[userIdentifier] = response.token
-    return response.token
-}
 
 private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
 fun shiftSummary(
-        start: LocalTime,
-        end: LocalTime,
-        default: String
+    start: LocalTime,
+    end: LocalTime,
+    default: String
 ): String {
 
     /* Trucks */
@@ -54,7 +49,7 @@ fun shiftSummary(
 
     /* General Picking */
     when (start.hour) {
-        in 0..13 -> return "Picking AM"
+        in 0..13  -> return "Picking AM"
         in 16..23 -> return "Picking PM"
     }
 
@@ -63,28 +58,6 @@ fun shiftSummary(
 }
 
 private fun OffsetDateTime.toGoogleDateTime(): DateTime = DateTime(toInstant().toEpochMilli())
-
-@OptIn(ExperimentalSerializationApi::class)
-private fun createWorkjamEndpoints(json: Json): WorkjamEndpoints {
-    val httpClient = OkHttpClient.Builder()
-            .addInterceptor(
-                    HeadersInterceptor(
-                            "Accept-Language: en",
-                            "Origin: https://app.workjam.com",
-                            "Referer: https://app.workjam.com/"
-                    )
-            )
-            .addInterceptor(LoggingInterceptor())
-
-
-    val retrofit = Retrofit.Builder()
-            .client(httpClient.build())
-            .baseUrl("https://prod-aus-gcp-api.workjam.com")
-            .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
-            .build()
-
-    return retrofit.create()
-}
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
@@ -101,24 +74,23 @@ suspend fun main(vararg args: String) = coroutineScope {
         ignoreUnknownKeys = true
     }
 
-    val workjam = createWorkjamEndpoints(json)
-    val token = reauthenticate(dsf.getDataStore("WorkjamTokens"), "user", workjam, TOKEN_OVERRIDE)
+    val workjamProvider = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
+    val workjam = workjamProvider.create(USER_ID, TOKEN_OVERRIDE)
 
     val syncPeriodStart = OffsetDateTime.now()
     val syncPeriodEnd = OffsetDateTime.now().plusMonths(2)
 
     val workjamShifts = workjam.events(
-            token,
-            WOOLIES, USER_ID,
-            syncPeriodStart, syncPeriodEnd
+        WOOLIES, USER_ID,
+        syncPeriodStart, syncPeriodEnd
     )
 
     val googleEvents = GoogleCalendar.calendar.events().list(CALENDAR_ID)
-            .setMaxResults(2500)
-            .setTimeMin(syncPeriodStart.toGoogleDateTime())
-            .setTimeMax(syncPeriodEnd.toGoogleDateTime())
-            .setShowDeleted(true)
-            .execute().items
+        .setMaxResults(2500)
+        .setTimeMin(syncPeriodStart.toGoogleDateTime())
+        .setTimeMax(syncPeriodEnd.toGoogleDateTime())
+        .setShowDeleted(true)
+        .execute().items
 
     val zoneId = ZoneId.of("Australia/Sydney")
 
@@ -131,7 +103,7 @@ suspend fun main(vararg args: String) = coroutineScope {
     for (shift in workjamShifts) {
 
         val coworkingPositions = when (shift.type) {
-            EventType.SHIFT                 -> workjam.coworkers(token, WOOLIES, shift.location.id, shift.id)
+            EventType.SHIFT                 -> workjam.coworkers(WOOLIES, shift.location.id, shift.id)
             EventType.AVAILABILITY_TIME_OFF -> emptyList()
         }
 
@@ -140,57 +112,57 @@ suspend fun main(vararg args: String) = coroutineScope {
 
         val vm = DescriptionViewModel(coworkerPositions = coworkingPositions.map { (coworkers, position) ->
             CoworkerPositionViewModel(
-                    position = position.externalCode,
-                    coworkers = coworkers.map { coworker ->
-                        val employeeDetails = employeeDataStore.computeIfAbsent(json, coworker.id) { id ->
-                            workjam.employee(token, WOOLIES, id)
-                        }
-                        val employeeNumber = employeeDetails.externalCode ?: ""
-                        val avatarUrl = coworker.avatarUrl?.replace(
-                                "/image/upload",
-                                "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                        )
-                        CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
-                    }.sortedBy { it.firstName })
+                position = position.externalCode,
+                coworkers = coworkers.map { coworker ->
+                    val employeeDetails = employeeDataStore.computeIfAbsent(json, coworker.id) { id ->
+                        workjam.employee(WOOLIES, id)
+                    }
+                    val employeeNumber = employeeDetails.externalCode ?: ""
+                    val avatarUrl = coworker.avatarUrl?.replace(
+                        "/image/upload",
+                        "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                    )
+                    CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
+                }.sortedBy { it.firstName })
         }.sortedBy { it.position })
 
         val description = descriptionGenerator.generate(vm)
 
         val summary = when (shift.type) {
             EventType.SHIFT                 -> shiftSummary(
-                    start.toLocalTime(),
-                    end.toLocalTime(),
-                    shift.title ?: "ERROR: MISSING TITLE"
+                start.toLocalTime(),
+                end.toLocalTime(),
+                shift.title ?: "ERROR: MISSING TITLE"
             )
             EventType.AVAILABILITY_TIME_OFF -> "Time Off"
         }
 
         val event = Event()
-                .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
-                .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
-                .setSummary(summary)
-                .setICalUID("${shift.id}@workjam.tfowl.com")
-                .setDescription(description)
+            .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
+            .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
+            .setSummary(summary)
+            .setICalUID("${shift.id}@workjam.tfowl.com")
+            .setDescription(description)
 
         val existingGoogleEvent = googleEvents.find { it.iCalUID == event.iCalUID }
 
         if (null != existingGoogleEvent) {
             GoogleCalendar.calendar.events()
-                    .update(
-                            CALENDAR_ID,
-                            existingGoogleEvent.id,
-                            event.setId(existingGoogleEvent.id).setStatus("confirmed")
-                    )
-                    .queue(batch,
-                           success = { println("Updated existing event ${event.iCalUID}") },
-                           failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
-                    )
+                .update(
+                    CALENDAR_ID,
+                    existingGoogleEvent.id,
+                    event.setId(existingGoogleEvent.id).setStatus("confirmed")
+                )
+                .queue(batch,
+                       success = { println("Updated existing event ${event.iCalUID}") },
+                       failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
+                )
         } else {
             GoogleCalendar.calendar.events()
-                    .insert(CALENDAR_ID, event).queue(batch,
-                                                      success = { println("Created event ${event.iCalUID}") },
-                                                      failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
-                    )
+                .insert(CALENDAR_ID, event).queue(batch,
+                                                  success = { println("Created event ${event.iCalUID}") },
+                                                  failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
+                )
         }
 
         println("Queueued shift ${event.summary} [${event.start}-${event.end}] (${event.iCalUID})")

@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.workjam.client
 
 import okhttp3.Interceptor
 import okhttp3.Response

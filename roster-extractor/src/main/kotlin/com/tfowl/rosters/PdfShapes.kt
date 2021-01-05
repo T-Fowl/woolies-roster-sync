@@ -8,36 +8,34 @@ import org.apache.pdfbox.util.Matrix
 import java.awt.geom.Point2D
 import kotlin.math.abs
 
-internal fun Matrix.prettyPrint(): String = "[scale: ($scaleX, $scaleY), translate: ($translateX, $translateY)]"
-
 data class PdfLine(
-        val start: Point2D,
-        val end: Point2D
+    val start: Point2D,
+    val end: Point2D
 )
 
 data class PdfRectangle(
-        val p0: Point2D,
-        val p1: Point2D,
-        val p2: Point2D,
-        val p3: Point2D
+    val p0: Point2D,
+    val p1: Point2D,
+    val p2: Point2D,
+    val p3: Point2D
 )
 
 fun PdfRectangle.lines(): List<PdfLine> = listOf(
-        PdfLine(p0, p1),
-        PdfLine(p1, p2),
-        PdfLine(p2, p3),
-        PdfLine(p3, p0)
+    PdfLine(p0, p1),
+    PdfLine(p1, p2),
+    PdfLine(p2, p3),
+    PdfLine(p3, p0)
 )
 
 data class PdfText(
-        val matrix: Matrix,
-        val text: String
+    val matrix: Matrix,
+    val text: String
 )
 
 data class PdfShapes(
-        val lines: List<PdfLine>,
-        val rectangles: List<PdfRectangle>,
-        val texts: List<PdfText>
+    val lines: List<PdfLine>,
+    val rectangles: List<PdfRectangle>,
+    val texts: List<PdfText>
 )
 
 fun PDPage.getVisualElements(): PdfShapes {
@@ -46,15 +44,17 @@ fun PDPage.getVisualElements(): PdfShapes {
     return engine.shapes()
 }
 
-private class PdfElementsStreamEngine(page: PDPage,
-                                      private val debug: Boolean = false) : PDFGraphicsStreamEngine(page) {
+private class PdfElementsStreamEngine(
+    page: PDPage,
+    private val debug: Boolean = false
+) : PDFGraphicsStreamEngine(page) {
 
     private val lines = mutableListOf<PdfLine>()
     private val rectangles = mutableListOf<PdfRectangle>()
     private val texts = mutableListOf<PdfText>()
 
     fun shapes(): PdfShapes = PdfShapes(
-            lines, rectangles, texts
+        lines, rectangles, texts
     )
 
     private val position = Point2D.Float(0.0f, 0.0f)
@@ -129,7 +129,7 @@ private class PdfElementsStreamEngine(page: PDPage,
     }
 
     private fun showTextString(text: String) {
-        debug { """showTextString("$text", matrix=${textMatrix.prettyPrint()})""" }
+        debug { """showTextString("$text", matrix=[scale: (${textMatrix.scaleX}, ${textMatrix.scaleY}), translate: (${textMatrix.translateX}, ${textMatrix.translateY})])""" }
 
         texts.add(PdfText(textMatrix.clone(), text))
     }

@@ -168,8 +168,10 @@ fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
     return departmentRosters
 }
 
-fun main() {
-    val document = PDDocument.load(File("3216_week_1.pdf"))
+fun main(vararg args: String) {
+    require(args.isNotEmpty()) { "Usage: [exec] roster-file" }
+
+    val document = PDDocument.load(File(args[0]))
 
 
     val tables = document.pages.map { obtainTable(it) }

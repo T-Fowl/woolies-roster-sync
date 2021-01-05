@@ -12,22 +12,55 @@ import java.awt.image.BufferedImage
 import kotlin.math.floor
 import kotlin.math.max
 
-class VisualDebugger(page: PDPage) {
+internal data class ImageWithGraphics(
+    val image: BufferedImage,
+    val graphics: Graphics2D,
+)
 
-    val dpi = 300f
-    val debugImage = page.createRenderableImage(dpi)
-    val pageRenderingTransform = page.displayTransform(dpi)
+interface VisualDebugger {
+    fun visualise(layer: String, block: Graphics2D.() -> Unit)
 
-    val graphics = debugImage.createGraphics().apply {
-        background = Color.WHITE
-        clearRect(0, 0, debugImage.width, debugImage.height)
-        color = Color.BLACK
-        stroke = BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)
-        transform(pageRenderingTransform.get(AffineTransform()))
+    fun images(): LinkedHashMap<String, BufferedImage>
+}
+
+class NoOpVisualDebugger : VisualDebugger {
+    override fun visualise(layer: String, block: Graphics2D.() -> Unit) {
+        //no-op
+    }
+
+    override fun images(): LinkedHashMap<String, BufferedImage> {
+        return LinkedHashMap()
     }
 }
 
-fun PDPage.createRenderableImage(dpi: Float = 300.0f): BufferedImage {
+class BufferedImageVisualDebugger(private val page: PDPage) : VisualDebugger {
+
+    private val dpi = 300f
+    private val pageRenderingTransform = page.displayTransform(dpi)
+    private val debugImages = LinkedHashMap<String, ImageWithGraphics>()
+
+    private fun createImage(): ImageWithGraphics {
+        val image = page.createRenderableImage(dpi)
+        val graphics: Graphics2D = image.createGraphics().apply {
+            background = Color.WHITE
+            clearRect(0, 0, image.width, image.height)
+            color = Color.BLACK
+            stroke = BasicStroke(2.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER)
+            transform(pageRenderingTransform.get(AffineTransform()))
+        }
+        return ImageWithGraphics(image, graphics)
+    }
+
+    override fun visualise(layer: String, block: Graphics2D.() -> Unit) {
+        val (_, graphics) = debugImages.computeIfAbsent(layer) { createImage() }
+        graphics.block()
+    }
+
+    override fun images(): LinkedHashMap<String, BufferedImage> =
+        debugImages.mapValuesTo(LinkedHashMap()) { (_, iwg) -> iwg.image }
+}
+
+internal fun PDPage.createRenderableImage(dpi: Float = 300.0f): BufferedImage {
     val scale = dpi / 72.0f
 
     val widthPt = cropBox.width
@@ -42,7 +75,7 @@ fun PDPage.createRenderableImage(dpi: Float = 300.0f): BufferedImage {
     }
 }
 
-fun PDPage.displayTransform(dpi: Float = 300.0f): Matrix3x2f = Matrix3x2f().apply {
+internal fun PDPage.displayTransform(dpi: Float = 300.0f): Matrix3x2f = Matrix3x2f().apply {
     this.scale(dpi / 72.0f)
 
     val rotationAngle = rotation
@@ -50,9 +83,9 @@ fun PDPage.displayTransform(dpi: Float = 300.0f): Matrix3x2f = Matrix3x2f().appl
     val pageSize = cropBox
 
     when (rotationAngle) {
-        90 -> this.translate(cropBox.height, 0.0f)
-        270 -> this.translate(0.0f, cropBox.width)
-        180 -> this.translate(cropBox.width, cropBox.height)
+        90   -> this.translate(cropBox.height, 0.0f)
+        270  -> this.translate(0.0f, cropBox.width)
+        180  -> this.translate(cropBox.width, cropBox.height)
         else -> this.translate(0.0f, 0.0f)
     }
 
@@ -64,16 +97,12 @@ fun PDPage.displayTransform(dpi: Float = 300.0f): Matrix3x2f = Matrix3x2f().appl
     this.translate(-pageSize.lowerLeftX, -pageSize.lowerLeftY)
 }
 
-fun VisualDebugger.visualise(block: VisualDebugger.() -> Unit = {}) {
-    block()
+fun <T> VisualDebugger.visualise(layer: String, arg: T, block: Graphics2D.(T) -> Unit = {}) {
+    visualise(layer) { this.block(arg) }
 }
 
-fun <T> VisualDebugger.visualise(arg: T, block: VisualDebugger.(T) -> Unit = {}) {
-    block(arg)
-}
-
-fun <T> VisualDebugger.visualiseEach(arg: Iterable<T>, block: VisualDebugger.(T) -> Unit = {}) {
-    arg.forEach { block(it) }
+fun <T> VisualDebugger.visualiseEach(layer: String, args: Iterable<T>, block: Graphics2D.(T) -> Unit = {}) {
+    visualise(layer) { args.forEach { arg -> this.block(arg) } }
 }
 
 fun Graphics2D.draw(colour: Color, shape: Shape) {
@@ -82,4 +111,5 @@ fun Graphics2D.draw(colour: Color, shape: Shape) {
 }
 
 @Suppress("FunctionName")
-fun CenteredEllipse(x: Double, y: Double, radiusA: Double, radiusB: Double = radiusA): Ellipse2D = Ellipse2D.Double(x - 0.5 * radiusA, y - 0.5 * radiusA, radiusA, radiusB)
+fun CenteredEllipse(x: Double, y: Double, radiusA: Double, radiusB: Double = radiusA): Ellipse2D =
+    Ellipse2D.Double(x - 0.5 * radiusA, y - 0.5 * radiusA, radiusA, radiusB)

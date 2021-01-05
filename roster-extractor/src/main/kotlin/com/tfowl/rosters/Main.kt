@@ -24,7 +24,7 @@ Things to consider:
  */
 
 private fun obtainTable(page: PDPage, debugger: VisualDebugger): Table {
-    val detection = CombinatorialIntersectionDetector()
+    val detection = IntersectionDetector()
         .detect(
             page,
             detectionTolerance = 0.275,

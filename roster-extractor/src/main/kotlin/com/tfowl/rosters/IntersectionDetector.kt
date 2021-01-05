@@ -44,7 +44,7 @@ private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorRes
     }
 }
 
-class IntersectionDetector(val tolerance: Double) {
+class BasicLineIntersectionDetector(val tolerance: Double) {
     fun detect(lines: List<PdfLine>): List<PdfLineIntersection> {
         val intersections = mutableListOf<PdfLineIntersection>()
 
@@ -144,7 +144,7 @@ class IntersectionGridAlignment(val tolerance: Double) {
     }
 }
 
-class CombinatorialIntersectionDetector {
+class IntersectionDetector {
     fun detect(
         page: PDPage,
         detectionTolerance: Double = 0.3,
@@ -154,7 +154,7 @@ class CombinatorialIntersectionDetector {
     ): IntersectionDetectorResults {
         val lines = with(page.getVisualElements()) { lines + rectangles.flatMap { it.lines() } }
 
-        val intersectionDetector = IntersectionDetector(detectionTolerance)
+        val intersectionDetector = BasicLineIntersectionDetector(detectionTolerance)
         val intersections = intersectionDetector.detect(lines)
 
         val deduplicator = IntersectionDeduplicator(combineTolerance)

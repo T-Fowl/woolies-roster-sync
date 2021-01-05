@@ -37,6 +37,7 @@ dependencies {
     }
 
     implementation(project(":google-api-okhttp-transport"))
+    implementation(project(":workjam"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.6")
 

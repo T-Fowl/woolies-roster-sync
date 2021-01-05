@@ -12,11 +12,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
-fun Double.roundToEighth(): Double = (this * 8.0).roundToInt() / 8.0
-
-// Unsafe but convenient
-fun MatchGroupCollection.getValue(name: String): String = get(name)!!.value
-
 /*
 
 Grid Detection Algorithm:

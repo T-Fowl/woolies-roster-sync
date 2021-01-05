@@ -104,12 +104,3 @@ fun <T> VisualDebugger.visualise(layer: String, arg: T, block: Graphics2D.(T) ->
 fun <T> VisualDebugger.visualiseEach(layer: String, args: Iterable<T>, block: Graphics2D.(T) -> Unit = {}) {
     visualise(layer) { args.forEach { arg -> this.block(arg) } }
 }
-
-fun Graphics2D.draw(colour: Color, shape: Shape) {
-    this.color = colour
-    draw(shape)
-}
-
-@Suppress("FunctionName")
-fun CenteredEllipse(x: Double, y: Double, radiusA: Double, radiusB: Double = radiusA): Ellipse2D =
-    Ellipse2D.Double(x - 0.5 * radiusA, y - 0.5 * radiusA, radiusA, radiusB)

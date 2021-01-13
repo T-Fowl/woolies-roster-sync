@@ -39,58 +39,93 @@ data class PdfShapes(
 )
 
 fun PDPage.getVisualElements(): PdfShapes {
-    val engine = PdfElementsStreamEngine(this)
-    engine.processPage(this)
-    return engine.shapes()
-}
+    val engine = PdfGraphicsStreamEvents(this)
+    val events = engine.process()
 
-private class PdfElementsStreamEngine(
-    page: PDPage,
-    private val debug: Boolean = false
-) : PDFGraphicsStreamEngine(page) {
+    val lines = mutableListOf<PdfLine>()
+    val rectangles = mutableListOf<PdfRectangle>()
+    val texts = mutableListOf<PdfText>()
 
-    private val lines = mutableListOf<PdfLine>()
-    private val rectangles = mutableListOf<PdfRectangle>()
-    private val texts = mutableListOf<PdfText>()
+    val position = Point2D.Float(0.0f, 0.0f)
 
-    fun shapes(): PdfShapes = PdfShapes(
-        lines, rectangles, texts
-    )
-
-    private val position = Point2D.Float(0.0f, 0.0f)
-
-    private fun debug(msg: () -> String) {
-        if (debug) {
-            println(msg())
+    events.forEach { event ->
+        when (event) {
+            is PdfGraphicsEvent.MoveTo          -> position.setLocation(event.x, event.y)
+            is PdfGraphicsEvent.LineTo          -> {
+                lines.add(
+                    PdfLine(
+                        Point2D.Float(position.x, position.y),
+                        Point2D.Float(event.x, event.y)
+                    )
+                )
+                position.setLocation(event.x, event.y)
+            }
+            is PdfGraphicsEvent.AppendRectangle -> {
+                rectangles.add(PdfRectangle(event.p0, event.p1, event.p2, event.p3))
+            }
+            is PdfGraphicsEvent.ShowTextString  -> {
+                texts.add(PdfText(event.transform, event.text))
+            }
+            else                                -> {
+            }
         }
     }
 
-    override fun appendRectangle(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D) {
-        debug { "appendRectangle($p0, $p1, $p2, $p3)" }
+    return PdfShapes(lines, rectangles, texts)
+}
 
-        rectangles.add(PdfRectangle(p0, p1, p2, p3))
+sealed class PdfGraphicsEvent {
+    data class MoveTo(val x: Float, val y: Float) : PdfGraphicsEvent()
+    data class LineTo(val x: Float, val y: Float) : PdfGraphicsEvent()
+    data class AppendRectangle(val p0: Point2D, val p1: Point2D, val p2: Point2D, val p3: Point2D) : PdfGraphicsEvent()
+    data class ShowTextString(val text: String, val transform: Matrix) : PdfGraphicsEvent()
+
+    object FillPath : PdfGraphicsEvent()
+    object StrokePath : PdfGraphicsEvent()
+}
+
+private class PdfGraphicsStreamEvents(
+    page: PDPage
+) : PDFGraphicsStreamEngine(page) {
+
+    fun process(): List<PdfGraphicsEvent> {
+        events.clear()
+        processPage(page)
+        return events.toList().also { events.clear() }
+    }
+
+    private val events = mutableListOf<PdfGraphicsEvent>()
+
+    private fun emit(event: PdfGraphicsEvent) {
+        events += event
+    }
+
+    private val position = Point2D.Float(0.0f, 0.0f)
+
+    private fun unsupported(msg: () -> Any) {
+        error("Unsupported Event: ${msg()}")
+    }
+
+    override fun appendRectangle(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D) {
+        emit(PdfGraphicsEvent.AppendRectangle(p0, p1, p2, p3))
     }
 
     override fun drawImage(pdImage: PDImage) {
-        debug { "drawImage($pdImage)" }
+        unsupported { "drawImage($pdImage)" }
     }
 
     override fun clip(windingRule: Int) {
-        debug { "clip($windingRule)" }
+        unsupported { "clip($windingRule)" }
     }
 
     override fun moveTo(x: Float, y: Float) {
-        debug { "moveTo($x, $y)" }
+        emit(PdfGraphicsEvent.MoveTo(x, y))
 
         position.setLocation(x, y)
     }
 
     override fun lineTo(x: Float, y: Float) {
-        debug { "lineTo($x, $y)" }
-
-        val start = Point2D.Double(position.x.toDouble(), position.y.toDouble())
-        val end = Point2D.Double(x.toDouble(), y.toDouble())
-        lines.add(PdfLine(start, end))
+        emit(PdfGraphicsEvent.LineTo(x, y))
 
         position.setLocation(x, y)
     }
@@ -98,44 +133,39 @@ private class PdfElementsStreamEngine(
     override fun curveTo(x1: Float, y1: Float, x2: Float, y2: Float, x3: Float, y3: Float) {
         // A lot of lines / paths seem to be terminated with an empty curveTo
         if (abs(x1 - x3) > 0.001f || abs(y1 - y3) > 0.001f) {
-            debug { "curveTo($x1, $y1, $x2, $y2, $x3, $y3)" }
+            unsupported { "curveTo($x1, $y1, $x2, $y2, $x3, $y3)" }
         }
     }
 
     override fun getCurrentPoint(): Point2D = position
 
     override fun closePath() {
-        debug { "closePath()" }
+        unsupported { "closePath()" }
     }
 
     override fun endPath() {
-        debug { "endPath()" }
+        unsupported { "endPath()" }
     }
 
     override fun strokePath() {
-        debug { "strokePath()" }
+        emit(PdfGraphicsEvent.StrokePath)
     }
 
     override fun fillPath(windingRule: Int) {
-        debug { "fillPath($windingRule)" }
+        emit(PdfGraphicsEvent.FillPath)
     }
 
     override fun fillAndStrokePath(windingRule: Int) {
-        debug { "fillAndStrokePath($windingRule)" }
+        unsupported { "fillAndStrokePath" }
     }
 
     override fun shadingFill(shadingName: COSName) {
-        debug { "shadingFill($shadingName)" }
-    }
-
-    private fun showTextString(text: String) {
-        debug { """showTextString("$text", matrix=[scale: (${textMatrix.scaleX}, ${textMatrix.scaleY}), translate: (${textMatrix.translateX}, ${textMatrix.translateY})])""" }
-
-        texts.add(PdfText(textMatrix.clone(), text))
+        unsupported { "shadingFill" }
     }
 
     override fun showTextString(string: ByteArray) {
-        showTextString(string.decodeToString())
+        emit(PdfGraphicsEvent.ShowTextString(string.decodeToString(), textMatrix.clone()))
+
         super.showTextString(string)
     }
 }

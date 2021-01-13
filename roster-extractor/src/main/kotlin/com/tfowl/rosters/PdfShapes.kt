@@ -3,6 +3,7 @@ package com.tfowl.rosters
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.util.Matrix
 import java.awt.geom.Point2D
+import java.util.*
 
 data class PdfLine(
     val start: Point2D,
@@ -42,19 +43,16 @@ class VisualElementsExtractor(val debugger: VisualDebugger) {
         val rectangles = mutableListOf<PdfRectangle>()
         val texts = mutableListOf<PdfText>()
 
-        val position = Point2D.Float(0.0f, 0.0f)
+        val path = LinkedList<Point2D>()
 
         events.forEach { event ->
             when (event) {
-                is PdfGraphicsEvent.MoveTo          -> position.setLocation(event.x, event.y)
+                is PdfGraphicsEvent.MoveTo          -> {
+                    path.clear()
+                    path.add(Point2D.Float(event.x, event.y))
+                }
                 is PdfGraphicsEvent.LineTo          -> {
-                    lines.add(
-                        PdfLine(
-                            Point2D.Float(position.x, position.y),
-                            Point2D.Float(event.x, event.y)
-                        )
-                    )
-                    position.setLocation(event.x, event.y)
+                    path.add(Point2D.Float(event.x, event.y))
                 }
                 is PdfGraphicsEvent.AppendRectangle -> {
                     rectangles.add(PdfRectangle(event.p0, event.p1, event.p2, event.p3))
@@ -62,7 +60,16 @@ class VisualElementsExtractor(val debugger: VisualDebugger) {
                 is PdfGraphicsEvent.ShowTextString  -> {
                     texts.add(PdfText(event.transform, event.text))
                 }
-                else                                -> {
+                is PdfGraphicsEvent.FillPath        -> {
+                    path.clear()
+                }
+                is PdfGraphicsEvent.StrokePath      -> {
+                    var curr = path.removeFirst()
+                    while (path.isNotEmpty()) {
+                        val next = path.removeFirst()
+                        lines.add(PdfLine(curr, next))
+                        curr = next
+                    }
                 }
             }
         }

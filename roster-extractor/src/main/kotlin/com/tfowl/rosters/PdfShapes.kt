@@ -34,37 +34,44 @@ data class PdfShapes(
     val texts: List<PdfText>
 )
 
-fun PDPage.getVisualElements(): PdfShapes {
-    val events = streamGraphicsEvents()
+class VisualElementsExtractor(val debugger: VisualDebugger) {
+    fun extract(page: PDPage): PdfShapes {
+        val events = page.streamGraphicsEvents()
 
-    val lines = mutableListOf<PdfLine>()
-    val rectangles = mutableListOf<PdfRectangle>()
-    val texts = mutableListOf<PdfText>()
+        val lines = mutableListOf<PdfLine>()
+        val rectangles = mutableListOf<PdfRectangle>()
+        val texts = mutableListOf<PdfText>()
 
-    val position = Point2D.Float(0.0f, 0.0f)
+        val position = Point2D.Float(0.0f, 0.0f)
 
-    events.forEach { event ->
-        when (event) {
-            is PdfGraphicsEvent.MoveTo          -> position.setLocation(event.x, event.y)
-            is PdfGraphicsEvent.LineTo          -> {
-                lines.add(
-                    PdfLine(
-                        Point2D.Float(position.x, position.y),
-                        Point2D.Float(event.x, event.y)
+        events.forEach { event ->
+            when (event) {
+                is PdfGraphicsEvent.MoveTo          -> position.setLocation(event.x, event.y)
+                is PdfGraphicsEvent.LineTo          -> {
+                    lines.add(
+                        PdfLine(
+                            Point2D.Float(position.x, position.y),
+                            Point2D.Float(event.x, event.y)
+                        )
                     )
-                )
-                position.setLocation(event.x, event.y)
-            }
-            is PdfGraphicsEvent.AppendRectangle -> {
-                rectangles.add(PdfRectangle(event.p0, event.p1, event.p2, event.p3))
-            }
-            is PdfGraphicsEvent.ShowTextString  -> {
-                texts.add(PdfText(event.transform, event.text))
-            }
-            else                                -> {
+                    position.setLocation(event.x, event.y)
+                }
+                is PdfGraphicsEvent.AppendRectangle -> {
+                    rectangles.add(PdfRectangle(event.p0, event.p1, event.p2, event.p3))
+                }
+                is PdfGraphicsEvent.ShowTextString  -> {
+                    texts.add(PdfText(event.transform, event.text))
+                }
+                else                                -> {
+                }
             }
         }
-    }
 
-    return PdfShapes(lines, rectangles, texts)
+        return PdfShapes(lines, rectangles, texts)
+    }
+}
+
+fun PDPage.getVisualElements(debugger: VisualDebugger): PdfShapes {
+    val extractor = VisualElementsExtractor(debugger)
+    return extractor.extract(this)
 }

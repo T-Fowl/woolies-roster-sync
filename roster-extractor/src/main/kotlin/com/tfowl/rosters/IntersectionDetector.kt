@@ -152,7 +152,7 @@ class IntersectionDetector {
         alignmentTolerance: Double = 0.3,
         debugger: VisualDebugger,
     ): IntersectionDetectorResults {
-        val lines = with(page.getVisualElements()) { lines + rectangles.flatMap { it.lines() } }
+        val lines = with(page.getVisualElements(debugger)) { lines + rectangles.flatMap { it.lines() } }
 
         val intersectionDetector = BasicLineIntersectionDetector(detectionTolerance)
         val intersections = intersectionDetector.detect(lines)

@@ -56,7 +56,7 @@ class WorkjamProvider(
 
             val retrofit = Retrofit.Builder()
                 .client(httpClient.build())
-                .baseUrl("https://prod-aus-gcp-api.workjam.com")
+                .baseUrl("https://prod-aus-gcp-woolworths-api.workjam.com")
                 .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
                 .build()
 

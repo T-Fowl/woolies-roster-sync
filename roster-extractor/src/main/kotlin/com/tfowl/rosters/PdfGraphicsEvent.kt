@@ -9,8 +9,14 @@ import java.awt.geom.Point2D
 import kotlin.math.abs
 
 sealed class PdfGraphicsEvent {
-    data class MoveTo(val x: Float, val y: Float) : PdfGraphicsEvent()
-    data class LineTo(val x: Float, val y: Float) : PdfGraphicsEvent()
+    data class MoveTo(val x: Float, val y: Float) : PdfGraphicsEvent() {
+        val point: Point2D get() = Point2D.Float(x, y)
+    }
+
+    data class LineTo(val x: Float, val y: Float) : PdfGraphicsEvent() {
+        val point: Point2D get() = Point2D.Float(x, y)
+    }
+
     data class AppendRectangle(val p0: Point2D, val p1: Point2D, val p2: Point2D, val p3: Point2D) : PdfGraphicsEvent()
     data class ShowTextString(val text: String, val transform: Matrix) : PdfGraphicsEvent()
 

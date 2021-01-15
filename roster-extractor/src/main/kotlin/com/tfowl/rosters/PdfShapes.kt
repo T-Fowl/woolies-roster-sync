@@ -69,10 +69,10 @@ class VisualElementsExtractor(val debugger: VisualDebugger) {
             when (event) {
                 is PdfGraphicsEvent.MoveTo          -> {
                     path.clear()
-                    path.add(Point2D.Float(event.x, event.y))
+                    path.add(event.point)
                 }
                 is PdfGraphicsEvent.LineTo          -> {
-                    path.add(Point2D.Float(event.x, event.y))
+                    path.add(event.point)
                 }
                 is PdfGraphicsEvent.AppendRectangle -> {
                     rectangles.add(PdfRectangle(event.p0, event.p1, event.p2, event.p3))

@@ -28,7 +28,7 @@ data class IntersectionDetectorResults(
 
 private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorResults) {
     visualiseEach("intersection-detection", detection.lines) { line ->
-        draw(Color.BLACK, Line2D.Double(line.start, line.end))
+        draw(Color.BLACK, Line2D.Double(line.start, line.finish))
     }
 
     visualiseEach("intersection-detection", detection.intersections) { intersection ->
@@ -57,9 +57,9 @@ class BasicLineIntersectionDetector(val tolerance: Double) {
                 if (j > i) {
                     val distance = Intersectiond.findClosestPointsLineSegments(
                         a.start.x, a.start.y, 0.0,
-                        a.end.x, a.end.y, 0.0,
+                        a.finish.x, a.finish.y, 0.0,
                         b.start.x, b.start.y, 0.0,
-                        b.end.x, b.end.y, 0.0,
+                        b.finish.x, b.finish.y, 0.0,
                         pointA, pointB
                     )
 

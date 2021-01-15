@@ -7,32 +7,52 @@ import java.util.*
 
 data class PdfLine(
     val start: Point2D,
-    val end: Point2D
+    val finish: Point2D,
+)
+
+data class PdfLinesGraph(
+    val lines: Set<PdfLine>,
+    val connections: Map<PdfLine, Set<PdfLine>>,
 )
 
 data class PdfRectangle(
     val p0: Point2D,
     val p1: Point2D,
     val p2: Point2D,
-    val p3: Point2D
+    val p3: Point2D,
 )
+
+fun PdfRectangle.linesGraph(): PdfLinesGraph {
+    val a = PdfLine(p0, p1)
+    val b = PdfLine(p1, p2)
+    val c = PdfLine(p2, p3)
+    val d = PdfLine(p3, p0)
+
+    val connections = mapOf(
+        a to setOf(b),
+        b to setOf(c),
+        c to setOf(d),
+        d to setOf(a),
+    )
+    return PdfLinesGraph(setOf(a, b, c, d), connections)
+}
 
 fun PdfRectangle.lines(): List<PdfLine> = listOf(
     PdfLine(p0, p1),
     PdfLine(p1, p2),
     PdfLine(p2, p3),
-    PdfLine(p3, p0)
+    PdfLine(p3, p0),
 )
 
 data class PdfText(
     val matrix: Matrix,
-    val text: String
+    val text: String,
 )
 
 data class PdfShapes(
     val lines: List<PdfLine>,
     val rectangles: List<PdfRectangle>,
-    val texts: List<PdfText>
+    val texts: List<PdfText>,
 )
 
 class VisualElementsExtractor(val debugger: VisualDebugger) {

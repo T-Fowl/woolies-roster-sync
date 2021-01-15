@@ -21,7 +21,7 @@ data class IntersectionDetectorResults(
     val lines: Set<PdfLine>,
     val intersections: Set<PdfLineIntersection>,
     val horizontalGridLines: SortedSet<Double>,
-    val verticalGridLines: SortedSet<Double>
+    val verticalGridLines: SortedSet<Double>,
 ) {
     val graph = GridGraph(lines, intersections)
 }
@@ -104,13 +104,13 @@ class IntersectionGridAlignment(val tolerance: Double) {
 
     data class AlignmentInfo(
         val horizontals: SortedSet<Double>,
-        val verticals: SortedSet<Double>
+        val verticals: SortedSet<Double>,
     )
 
     private fun alignOnAnAxis(
         intersections: List<PdfLineIntersection>,
         axisAccessor: Point2D.() -> Double,
-        axisSetter: Point2D.(Double) -> Unit
+        axisSetter: Point2D.(Double) -> Unit,
     ): SortedSet<Double> {
         val hasBeenAligned = hashSetOf<PdfLineIntersection>()
         val axisLines = sortedSetOf<Double>()
@@ -152,7 +152,8 @@ class IntersectionDetector {
         alignmentTolerance: Double = 0.3,
         debugger: VisualDebugger,
     ): IntersectionDetectorResults {
-        val lines = with(page.getVisualElements(debugger)) { lines + rectangles.flatMap { it.lines() } }
+        val elements = page.getVisualElements(debugger)
+        val lines = elements.lines.lines.toList()
 
         val intersectionDetector = BasicLineIntersectionDetector(detectionTolerance)
         val intersections = intersectionDetector.detect(lines)

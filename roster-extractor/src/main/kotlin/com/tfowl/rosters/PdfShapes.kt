@@ -10,7 +10,7 @@ data class PdfLine(
     val finish: Point2D,
 )
 
-data class PdfLinesGraph(
+data class PdfLines(
     val lines: Set<PdfLine>,
     val connections: Map<PdfLine, Set<PdfLine>>,
 )
@@ -22,7 +22,7 @@ data class PdfRectangle(
     val p3: Point2D,
 )
 
-fun PdfRectangle.linesGraph(): PdfLinesGraph {
+fun PdfRectangle.linesGraph(): PdfLines {
     val a = PdfLine(p0, p1)
     val b = PdfLine(p1, p2)
     val c = PdfLine(p2, p3)
@@ -34,7 +34,7 @@ fun PdfRectangle.linesGraph(): PdfLinesGraph {
         c to setOf(d),
         d to setOf(a),
     )
-    return PdfLinesGraph(setOf(a, b, c, d), connections)
+    return PdfLines(setOf(a, b, c, d), connections)
 }
 
 fun PdfRectangle.lines(): List<PdfLine> = listOf(

@@ -22,7 +22,7 @@ fun Graphics2D.draw(colour: Color, shape: Shape) {
 
 @Suppress("FunctionName")
 fun CenteredEllipse(x: Double, y: Double, radiusA: Double, radiusB: Double = radiusA): Ellipse2D =
-    Ellipse2D.Double(x - 0.5 * radiusA, y - 0.5 * radiusA, radiusA, radiusB)
+    Ellipse2D.Double(x - radiusA, y - radiusB, 2 * radiusA, 2 * radiusB)
 
 public inline fun <T> Iterable<T>.forEachWithNext(consumer: (a: T, b: T) -> Unit) {
     val iterator = iterator()

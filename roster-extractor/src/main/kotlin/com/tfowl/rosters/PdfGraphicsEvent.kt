@@ -8,22 +8,19 @@ import org.apache.pdfbox.util.Matrix
 import java.awt.geom.Point2D
 import kotlin.math.abs
 
-sealed class PdfGraphicsEvent {
-    data class MoveTo(val x: Float, val y: Float) : PdfGraphicsEvent() {
-        val point: Point2D get() = Point2D.Float(x, y)
-    }
+sealed class PdfGraphicsEvent
 
-    data class LineTo(val x: Float, val y: Float) : PdfGraphicsEvent() {
-        val point: Point2D get() = Point2D.Float(x, y)
-    }
+data class MoveToEvent(val point: Point) : PdfGraphicsEvent()
 
-    data class AppendRectangle(val p0: Point2D, val p1: Point2D, val p2: Point2D, val p3: Point2D) : PdfGraphicsEvent()
-    data class ShowTextString(val text: String, val transform: Matrix) : PdfGraphicsEvent()
+data class LineToEvent(val point: Point) : PdfGraphicsEvent()
 
-    object FillPath : PdfGraphicsEvent()
-    object StrokePath : PdfGraphicsEvent()
-}
+data class AppendRectangleEvent(val p0: Point, val p1: Point, val p2: Point, val p3: Point) : PdfGraphicsEvent()
 
+data class ShowTextStringEvent(val text: String, val transform: Matrix) : PdfGraphicsEvent()
+
+object FillPathEvent : PdfGraphicsEvent()
+
+object StrokePathEvent : PdfGraphicsEvent()
 
 private class PdfGraphicsStreamEvents : PDFGraphicsStreamEngine(null) {
 
@@ -46,7 +43,7 @@ private class PdfGraphicsStreamEvents : PDFGraphicsStreamEngine(null) {
     }
 
     override fun appendRectangle(p0: Point2D, p1: Point2D, p2: Point2D, p3: Point2D) {
-        emit(PdfGraphicsEvent.AppendRectangle(p0, p1, p2, p3))
+        emit(AppendRectangleEvent(p0.toPoint(), p1.toPoint(), p2.toPoint(), p3.toPoint()))
     }
 
     override fun drawImage(pdImage: PDImage) {
@@ -58,13 +55,13 @@ private class PdfGraphicsStreamEvents : PDFGraphicsStreamEngine(null) {
     }
 
     override fun moveTo(x: Float, y: Float) {
-        emit(PdfGraphicsEvent.MoveTo(x, y))
+        emit(MoveToEvent(Point(x, y).roundToEighth()))
 
         position.setLocation(x, y)
     }
 
     override fun lineTo(x: Float, y: Float) {
-        emit(PdfGraphicsEvent.LineTo(x, y))
+        emit(LineToEvent(Point(x, y).roundToEighth()))
 
         position.setLocation(x, y)
     }
@@ -87,29 +84,29 @@ private class PdfGraphicsStreamEvents : PDFGraphicsStreamEngine(null) {
     }
 
     override fun strokePath() {
-        emit(PdfGraphicsEvent.StrokePath)
+        emit(StrokePathEvent)
     }
 
     override fun fillPath(windingRule: Int) {
-        emit(PdfGraphicsEvent.FillPath)
+        emit(FillPathEvent)
     }
 
     override fun fillAndStrokePath(windingRule: Int) {
-        unsupported { "fillAndStrokePath" }
+        unsupported { "fillAndStrokePath($windingRule)" }
     }
 
     override fun shadingFill(shadingName: COSName) {
-        unsupported { "shadingFill" }
+        unsupported { "shadingFill($shadingName)" }
     }
 
     override fun showTextString(string: ByteArray) {
-        emit(PdfGraphicsEvent.ShowTextString(string.decodeToString(), textMatrix.clone()))
+        emit(ShowTextStringEvent(string.decodeToString(), textMatrix.clone()))
 
         super.showTextString(string)
     }
 }
 
-internal fun PDPage.streamGraphicsEvents(): List<PdfGraphicsEvent> {
+internal fun PDPage.graphicsEvents(): List<PdfGraphicsEvent> {
     val stream = PdfGraphicsStreamEvents()
     return stream.events(this)
 }

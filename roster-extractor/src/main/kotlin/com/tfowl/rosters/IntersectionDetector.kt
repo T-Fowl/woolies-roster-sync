@@ -1,5 +1,7 @@
 package com.tfowl.rosters
 
+import com.tfowl.rosters.graphs.UndirectedGraph
+import com.tfowl.rosters.graphs.forEachEdge
 import org.apache.pdfbox.pdmodel.PDPage
 import org.joml.Intersectiond
 import org.joml.Vector3d
@@ -22,13 +24,11 @@ data class IntersectionDetectorResults(
     val intersections: Set<PdfLineIntersection>,
     val horizontalGridLines: SortedSet<Double>,
     val verticalGridLines: SortedSet<Double>,
-) {
-    val graph = GridGraph(lines, intersections)
-}
+)
 
 private fun VisualDebugger.visualiseDetection(detection: IntersectionDetectorResults) {
     visualiseEach("intersection-detection", detection.lines) { line ->
-        draw(Color.BLACK, Line2D.Double(line.start, line.finish))
+        draw(Color.BLACK, Line2D.Double(line.start.x, line.start.y, line.finish.x, line.finish.y))
     }
 
     visualiseEach("intersection-detection", detection.intersections) { intersection ->
@@ -145,6 +145,19 @@ class IntersectionGridAlignment(val tolerance: Double) {
 }
 
 class IntersectionDetector {
+
+    // TODO: Duplicates? && This is temporary bridge between new detection and old
+    private fun UndirectedGraph<Point>.linesForOldDetection(): List<PdfLine> {
+        val uniquePdfLines = mutableSetOf<PdfLine>()
+        forEachEdge { a, b ->
+            val x = PdfLine(a, b)
+            val y = PdfLine(b, a)
+            if (x !in uniquePdfLines && y !in uniquePdfLines)
+                uniquePdfLines.add(x)
+        }
+        return uniquePdfLines.toList()
+    }
+
     fun detect(
         page: PDPage,
         detectionTolerance: Double = 0.3,
@@ -153,7 +166,8 @@ class IntersectionDetector {
         debugger: VisualDebugger,
     ): IntersectionDetectorResults {
         val elements = page.getVisualElements(debugger)
-        val lines = elements.lines.lines.toList()
+        // TODO: Bridge from old to new
+        val lines = elements.linesForOldDetection()
 
         val intersectionDetector = BasicLineIntersectionDetector(detectionTolerance)
         val intersections = intersectionDetector.detect(lines)

@@ -26,14 +26,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.0-RC")
 
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.23.0") {
-        exclude(group = "org.apache.httpcomponents", module = "httpclient")
-    }
-    implementation("com.google.apis:google-api-services-calendar:v3-rev305-1.23.0") {
-        exclude(group = "org.apache.httpcomponents", module = "httpclient")
-    }
-
-    implementation(project(":google-api-okhttp-transport"))
+    implementation(project(":google-api-tfowl"))
     implementation(project(":workjam"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.6")

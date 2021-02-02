@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.googleapi
 
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
@@ -31,7 +31,7 @@ private fun getCredentials(
     httpTransport: HttpTransport,
     jsonFactory: JsonFactory,
     scopes: List<String>,
-    dataStoreFactory: DataStoreFactory
+    dataStoreFactory: DataStoreFactory,
 ): Credential {
     val input = File(CLIENT_SECRETS).reader()
     val secrets = GoogleClientSecrets.load(jsonFactory, input)
@@ -85,10 +85,10 @@ internal fun <T> AbstractGoogleJsonClientRequest<T>.queueDeferred(batch: BatchRe
     return cp
 }
 
-internal fun <T> AbstractGoogleJsonClientRequest<T>.queue(
+fun <T> AbstractGoogleJsonClientRequest<T>.queue(
     batch: BatchRequest,
     success: (T) -> Unit = {},
-    failure: (GoogleJsonError) -> Unit = {}
+    failure: (GoogleJsonError) -> Unit = {},
 ) {
     queue(batch, object : JsonBatchCallback<T>() {
         override fun onSuccess(t: T, responseHeaders: HttpHeaders?) {

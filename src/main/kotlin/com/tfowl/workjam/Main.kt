@@ -5,6 +5,10 @@ import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
+import com.tfowl.googleapi.GoogleCalendar
+import com.tfowl.googleapi.TOKENS_DIRECTORY
+import com.tfowl.googleapi.computeIfAbsent
+import com.tfowl.googleapi.queue
 import com.tfowl.workjam.client.WorkjamCredentialStorage
 import com.tfowl.workjam.client.WorkjamProvider
 import com.tfowl.workjam.client.model.EventType
@@ -38,7 +42,7 @@ private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-")
 fun shiftSummary(
     start: LocalTime,
     end: LocalTime,
-    default: String
+    default: String,
 ): String {
 
     /* Trucks */
@@ -159,9 +163,10 @@ suspend fun main(vararg args: String) = coroutineScope {
                 )
         } else {
             GoogleCalendar.calendar.events()
-                .insert(CALENDAR_ID, event).queue(batch,
-                                                  success = { println("Created event ${event.iCalUID}") },
-                                                  failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
+                .insert(CALENDAR_ID, event)
+                .queue(batch,
+                       success = { println("Created event ${event.iCalUID}") },
+                       failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
                 )
         }
 

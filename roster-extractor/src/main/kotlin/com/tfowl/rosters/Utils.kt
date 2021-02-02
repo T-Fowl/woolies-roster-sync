@@ -1,5 +1,6 @@
 package com.tfowl.rosters
 
+import com.tfowl.rosters.pdf.Point
 import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.Shape

@@ -1,4 +1,4 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.pdf
 
 import java.awt.geom.Point2D
 import kotlin.math.sqrt

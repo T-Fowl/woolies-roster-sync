@@ -1,5 +1,6 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.pdf
 
+import com.tfowl.rosters.roundToEighth
 import org.apache.pdfbox.contentstream.PDFGraphicsStreamEngine
 import org.apache.pdfbox.cos.COSName
 import org.apache.pdfbox.pdmodel.PDPage

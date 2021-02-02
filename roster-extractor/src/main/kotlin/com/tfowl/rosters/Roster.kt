@@ -1,28 +1,52 @@
+@file:Suppress("unused")
+
 package com.tfowl.rosters
 
 import com.jakewharton.picnic.Table
 import java.time.DayOfWeek
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
-data class LocalDatePeriod(val start: LocalDate, val end: LocalDate)
+data class LocalDateRange(override val start: LocalDate, val finish: LocalDate) : ClosedRange<LocalDate> {
+    override val endInclusive: LocalDate = finish
+}
+
+data class LocalTimeRange(override val start: LocalTime, val finish: LocalTime) : ClosedRange<LocalTime> {
+    override val endInclusive: LocalTime = finish
+}
+
+data class LocalDateTimeRange(override val start: LocalDateTime, val finish: LocalDateTime) :
+    ClosedRange<LocalDateTime> {
+    override val endInclusive: LocalDateTime = finish
+}
 
 data class DepartmentInfoHeader(
     val siteCode: Int,
     val siteName: String,
     val name: String,
-    val timePeriod: LocalDatePeriod,
-    val executedOn: LocalDate
+    val timePeriod: LocalDateRange,
+    val executedOn: LocalDate,
 )
 
-data class ShiftTimes(val from: LocalTime, val to: LocalTime)
+// TODO: period: LocalDateTimeRange ???
+data class Shift(
+    val date: LocalDate,
+    val period: LocalTimeRange?,
+    val department: String,
+    val text: String,
+)
 
-data class Shift(val date: LocalDate, val period: ShiftTimes?, val department: String, val text: String)
+data class Job(
+    val title: String,
+    val shifts: List<Shift>,
+)
 
-data class Job(val title: String, val shifts: List<Shift>)
-
-data class Employee(val name: String, val jobs: List<Job>)
+data class Employee(
+    val name: String,
+    val jobs: List<Job>,
+)
 
 data class DepartmentRoster(
     val department: DepartmentInfoHeader,
@@ -32,14 +56,14 @@ data class DepartmentRoster(
 
 internal data class JobBuilder(
     val title: String,
-    val shifts: MutableList<Shift> = mutableListOf()
+    val shifts: MutableList<Shift> = mutableListOf(),
 ) {
     fun build(): Job = Job(title, shifts.toList())
 }
 
 internal data class EmployeeBuilder(
     val name: String,
-    val jobs: MutableList<JobBuilder> = mutableListOf()
+    val jobs: MutableList<JobBuilder> = mutableListOf(),
 ) {
     fun build(): Employee = Employee(name, jobs.map { it.build() })
 }
@@ -81,7 +105,7 @@ fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
                     getValue("siteid").toInt(),
                     getValue("sitename"),
                     getValue("department"),
-                    LocalDatePeriod(
+                    LocalDateRange(
                         LocalDate.parse(getValue("from"), localDateFormatter),
                         LocalDate.parse(getValue("to"), localDateFormatter)
                     ),
@@ -111,7 +135,7 @@ fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
                 if (rosterText.isNotBlank()) {
                     val times = Regex("""(?<from>\d+:\d+[AP]) - (?<to>\d+:\d+[AP])""").find(rosterText)?.run {
                         val formatter = DateTimeFormatter.ofPattern("h:mma")
-                        ShiftTimes(
+                        LocalTimeRange(
                             LocalTime.parse(groups.getValue("from") + "M", formatter),
                             LocalTime.parse(groups.getValue("to") + "M", formatter)
                         )

@@ -1,7 +1,9 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.detection
 
+import com.tfowl.rosters.*
 import com.tfowl.rosters.graphs.UndirectedGraph
 import com.tfowl.rosters.graphs.forEachEdge
+import com.tfowl.rosters.pdf.Point
 import org.apache.pdfbox.pdmodel.PDPage
 import org.joml.Intersectiond
 import org.joml.Vector3d

@@ -1,5 +1,6 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.detection
 
+import com.tfowl.rosters.*
 import com.tfowl.rosters.graphs.*
 import com.tfowl.rosters.pdf.*
 import org.apache.pdfbox.pdmodel.PDPage

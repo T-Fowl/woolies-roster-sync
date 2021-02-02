@@ -1,8 +1,12 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.detection
 
 import com.jakewharton.picnic.BorderStyle
 import com.jakewharton.picnic.Table
 import com.jakewharton.picnic.table
+import com.tfowl.rosters.CenteredEllipse
+import com.tfowl.rosters.VisualDebugger
+import com.tfowl.rosters.draw
+import com.tfowl.rosters.visualiseEach
 import org.apache.pdfbox.pdmodel.PDPage
 import org.apache.pdfbox.text.PDFTextStripperByArea
 import java.awt.Color
@@ -11,7 +15,7 @@ import kotlin.math.abs
 
 internal data class EnclosedArea(
     val lowerX: Double, val upperX: Double,
-    val lowerY: Double, val upperY: Double
+    val lowerY: Double, val upperY: Double,
 ) {
 
     val centerX = 0.5 * (lowerX + upperX)
@@ -40,7 +44,7 @@ internal fun enclosedAreas(detection: IntersectionDetectorResults): Set<Enclosed
 
 data class CellLocation(
     val row: Int, val rowSpan: Int,
-    val column: Int, val columnSpan: Int
+    val column: Int, val columnSpan: Int,
 )
 
 class TableExtractor {

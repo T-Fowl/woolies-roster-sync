@@ -1,6 +1,8 @@
 package com.tfowl.rosters
 
 import com.jakewharton.picnic.Table
+import com.tfowl.rosters.detection.IntersectionDetector
+import com.tfowl.rosters.detection.TableExtractor
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 import java.io.File

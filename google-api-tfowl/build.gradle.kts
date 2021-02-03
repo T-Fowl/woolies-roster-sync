@@ -1,31 +1,12 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
-plugins {
-    kotlin("jvm")
-}
-
 group = "com.tfowl.google-apis"
 version = "1.0-SNAPSHOT"
-
-repositories {
-    mavenCentral()
-}
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
-
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
-    kotlinOptions.jvmTarget = "1.8"
-    kotlinOptions.freeCompilerArgs = listOf("-Xinline-classes", "-Xopt-in=kotlin.RequiresOptIn")
-}
 
 dependencies {
     implementation(kotlin("stdlib"))
 
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
-    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.0-RC")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1")
+    api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
 
     api("com.google.oauth-client:google-oauth-client-jetty:1.23.0") {
         exclude(group = "org.apache.httpcomponents", module = "httpclient")

@@ -5,11 +5,42 @@ import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.Shape
 import java.awt.geom.Ellipse2D
+import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 import kotlin.math.roundToInt
 
 fun Double.roundToEighth(): Double = (this * 8.0).roundToInt() / 8.0
 
 fun Point.roundToEighth(): Point = Point(x.roundToEighth(), y.roundToEighth())
+
+data class LocalDateRange(
+    override val start: LocalDate,
+    val finish: LocalDate,
+) : ClosedRange<LocalDate> {
+    override val endInclusive: LocalDate = finish
+}
+
+data class LocalTimeRange(
+    override val start: LocalTime,
+    val finish: LocalTime,
+) : ClosedRange<LocalTime> {
+    override val endInclusive: LocalTime = finish
+}
+
+data class LocalDateTimeRange(
+    override val start: LocalDateTime,
+    val finish: LocalDateTime,
+) : ClosedRange<LocalDateTime> {
+    override val endInclusive: LocalDateTime = finish
+}
+
+fun String.toLocalDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): LocalDate =
+    LocalDate.parse(this, formatter)
+
+fun String.toLocalTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_TIME): LocalTime =
+    LocalTime.parse(this, formatter)
 
 /**
  * Unsafe but convenient

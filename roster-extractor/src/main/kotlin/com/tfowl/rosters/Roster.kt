@@ -5,22 +5,8 @@ package com.tfowl.rosters
 import com.jakewharton.picnic.Table
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
-
-data class LocalDateRange(override val start: LocalDate, val finish: LocalDate) : ClosedRange<LocalDate> {
-    override val endInclusive: LocalDate = finish
-}
-
-data class LocalTimeRange(override val start: LocalTime, val finish: LocalTime) : ClosedRange<LocalTime> {
-    override val endInclusive: LocalTime = finish
-}
-
-data class LocalDateTimeRange(override val start: LocalDateTime, val finish: LocalDateTime) :
-    ClosedRange<LocalDateTime> {
-    override val endInclusive: LocalDateTime = finish
-}
+import java.util.*
 
 data class DepartmentInfoHeader(
     val siteCode: Int,
@@ -30,27 +16,27 @@ data class DepartmentInfoHeader(
     val executedOn: LocalDate,
 )
 
-// TODO: period: LocalDateTimeRange ???
 data class Shift(
     val date: LocalDate,
+    // TODO: LocalDateTimeRange to account for night fill etc?
     val period: LocalTimeRange?,
     val department: String,
     val text: String,
 )
 
-data class Job(
+data class DepartmentJob(
     val title: String,
     val shifts: List<Shift>,
 )
 
-data class Employee(
+data class DepartmentEmployee(
     val name: String,
-    val jobs: List<Job>,
+    val jobs: List<DepartmentJob>,
 )
 
 data class DepartmentRoster(
     val department: DepartmentInfoHeader,
-    val employees: List<Employee>,
+    val employees: List<DepartmentEmployee>,
 )
 
 
@@ -58,96 +44,107 @@ internal data class JobBuilder(
     val title: String,
     val shifts: MutableList<Shift> = mutableListOf(),
 ) {
-    fun build(): Job = Job(title, shifts.toList())
+    fun build(): DepartmentJob = DepartmentJob(title, shifts.toList())
 }
 
 internal data class EmployeeBuilder(
     val name: String,
     val jobs: MutableList<JobBuilder> = mutableListOf(),
 ) {
-    fun build(): Employee = Employee(name, jobs.map { it.build() })
+    fun build(): DepartmentEmployee = DepartmentEmployee(name, jobs.map { it.build() })
 }
 
+internal data class DepartmentBuilder(
+    val info: DepartmentInfoHeader,
+    val employees: MutableList<EmployeeBuilder> = mutableListOf(),
+) {
+    fun build(): DepartmentRoster = DepartmentRoster(info, employees.map { it.build() })
+}
 
-fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
+private fun String.tryParseDepartmentHeader(): DepartmentInfoHeader? {
     val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
     val localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h.mm a")
 
-    val departmentRosters = hashSetOf<DepartmentRoster>()
-    var section: DepartmentInfoHeader? = null
-    val employees = mutableSetOf<EmployeeBuilder>()
+    val regex =
+        Regex("""Location Schedule - (?<siteid>\d+) (?<sitename>.+?) - (?<department>.+?) Time Period\s?:\s?(?<from>\d+/\d+/\d+) - (?<to>\d+/\d+/\d+) Executed on: (?<executed>\d+/\d+/\d+\s*\d+\.\d+\s*[AP]M)""")
+    val match = regex.find(this) ?: return null
 
-    fun nextDepartment() {
-        section?.let { department ->
-            departmentRosters.add(
-                DepartmentRoster(
-                    department,
-                    employees.map { it.build() }
-                )
-            )
-            employees.clear()
-        }
+    return with(match.groups) {
+        DepartmentInfoHeader(
+            getValue("siteid").toInt(),
+            getValue("sitename"),
+            getValue("department"),
+            LocalDateRange(
+                getValue("from").toLocalDate(localDateFormatter),
+                getValue("to").toLocalDate(localDateFormatter)
+            ),
+            getValue("executed").toLocalDate(localDateTimeFormatter)
+        )
+    }
+}
+
+private fun Table.tryFindDateColumns(): SortedMap<LocalDate, Int>? {
+    val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+    return DayOfWeek.values().map { day ->
+        val dayOfWeekCell = firstCellOrNull { it.content.contains(day.name, ignoreCase = true) } ?: return null
+        val dateContent = get(origin = dayOfWeekCell, rowOffset = 1).content
+
+        dateContent.toLocalDate(localDateFormatter) to dayOfWeekCell.columnIndex
+    }.toMap().toSortedMap()
+}
+
+class TableRostersExtractor {
+    private val departmentBuilders = mutableListOf<DepartmentBuilder>()
+    private var currentDepartment: DepartmentBuilder? = null
+
+    private fun nextDepartment(header: DepartmentInfoHeader) {
+        currentDepartment = DepartmentBuilder(header).also { departmentBuilders.add(it) }
     }
 
-    for (table in this) {
-        if ("Location Schedule" in table[0, 0].cell.content) {
-            val header = table[0, 0].cell.content
-
-            val regex =
-                Regex("""Location Schedule - (?<siteid>\d+) (?<sitename>.+?) - (?<department>.+?) Time Period\s?:\s?(?<from>\d+/\d+/\d+) - (?<to>\d+/\d+/\d+) Executed on: (?<executed>\d+/\d+/\d+\s*\d+\.\d+\s*[AP]M)""")
-            val match = regex.find(header) ?: error("Unmatched header")
-
-
-            nextDepartment()
-
-            section = with(match.groups) {
-                DepartmentInfoHeader(
-                    getValue("siteid").toInt(),
-                    getValue("sitename"),
-                    getValue("department"),
-                    LocalDateRange(
-                        LocalDate.parse(getValue("from"), localDateFormatter),
-                        LocalDate.parse(getValue("to"), localDateFormatter)
-                    ),
-                    LocalDate.parse(getValue("executed"), localDateTimeFormatter)
-                )
+    fun extract(tables: List<Table>): Set<DepartmentRoster> {
+        for (table in tables) {
+            if ("Location Schedule" in table[0, 0].content) {
+                val header = table[0, 0].content.tryParseDepartmentHeader() ?: error("Unmatched header")
+                nextDepartment(header)
             }
-        }
 
-        val datesColumns = DayOfWeek.values().map { day ->
-            val dayOfWeekCell = table.positionedCells.first { it.cell.content.contains(day.name, ignoreCase = true) }
-            val dateContent = table[dayOfWeekCell.rowIndex + 1, dayOfWeekCell.columnIndex].cell.content
-            LocalDate.parse(dateContent, localDateFormatter) to dayOfWeekCell.columnIndex
-        }.toMap().toSortedMap()
+            val dateToColumn = table.tryFindDateColumns() ?: error("Cannot find week days and dates")
 
-        val employeeHeader = table.positionedCells.first { "Employee" in it.cell.content }
-        val jobHeader = table.positionedCells.first { "Job" in it.cell.content }
-        for (row in (employeeHeader.rowIndex + 1) until table.rowCount) {
-            val name = table[row, employeeHeader.columnIndex].cell.content
-            val jobTitle = table[row, jobHeader.columnIndex].cell.content
-            val department = section!!.name
+            val employeeHeader =
+                table.firstCellOrNull { "Employee" in it.content } ?: error("Cannot find Employee header")
+            val jobHeader = table.firstCellOrNull { "Job" in it.content } ?: error("Cannot find Job header")
 
-            val employee = EmployeeBuilder(name).also { employees.add(it) }
-            val job = JobBuilder(jobTitle).also { employee.jobs.add(it) }
+            requireNotNull(currentDepartment) { "No department found for employees" }
+            for (row in (employeeHeader.rowIndex + 1) until table.rowCount) {
+                val name = table[row, employeeHeader.columnIndex].content
+                val jobTitle = table[row, jobHeader.columnIndex].content
+                val department = currentDepartment!!.info.name
 
-            for ((date, columnIndex) in datesColumns) {
-                val rosterText = table[row, columnIndex].cell.content
-                if (rosterText.isNotBlank()) {
-                    val times = Regex("""(?<from>\d+:\d+[AP]) - (?<to>\d+:\d+[AP])""").find(rosterText)?.run {
-                        val formatter = DateTimeFormatter.ofPattern("h:mma")
-                        LocalTimeRange(
-                            LocalTime.parse(groups.getValue("from") + "M", formatter),
-                            LocalTime.parse(groups.getValue("to") + "M", formatter)
-                        )
+                val employee = EmployeeBuilder(name).also { currentDepartment!!.employees.add(it) }
+                val job = JobBuilder(jobTitle).also { employee.jobs.add(it) }
+
+                for ((date, columnIndex) in dateToColumn) {
+                    val rosterText = table[row, columnIndex].content
+                    if (rosterText.isNotBlank()) {
+                        val times = Regex("""(?<from>\d+:\d+[AP]) - (?<to>\d+:\d+[AP])""").find(rosterText)?.run {
+                            val formatter = DateTimeFormatter.ofPattern("h:mma")
+                            LocalTimeRange(
+                                "${groups.getValue("from")}M".toLocalTime(formatter),
+                                "${groups.getValue("to")}M".toLocalTime(formatter)
+                            )
+                        }
+
+                        job.shifts.add(Shift(date, times, department, rosterText))
                     }
-
-                    job.shifts.add(Shift(date, times, department, rosterText))
                 }
             }
         }
+        return departmentBuilders.map { it.build() }.toSet()
     }
+}
 
-    nextDepartment()
-
-    return departmentRosters
+fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
+    val extractor = TableRostersExtractor()
+    return extractor.extract(this)
 }

@@ -47,8 +47,8 @@ data class CellLocation(
     val column: Int, val columnSpan: Int,
 )
 
-class TableExtractor {
-    fun extract(page: PDPage, detection: IntersectionDetectorResults, debugger: VisualDebugger): Table {
+class TableIdentifier {
+    fun identify(page: PDPage, detection: IntersectionDetectorResults, debugger: VisualDebugger): Table {
         val areas = enclosedAreas(detection)
 
         debugger.visualiseEach("grid-areas", areas) { area ->

@@ -146,7 +146,11 @@ class IntersectionGridAlignment(val tolerance: Double) {
     }
 }
 
-class IntersectionDetector {
+class IntersectionDetector(
+    private val detectionTolerance: Double = 0.3,
+    private val combineTolerance: Double = 0.3,
+    private val alignmentTolerance: Double = 0.3,
+) {
 
     // TODO: Duplicates? && This is temporary bridge between new detection and old
     private fun UndirectedGraph<Point>.linesForOldDetection(): List<PdfLine> {
@@ -162,9 +166,6 @@ class IntersectionDetector {
 
     fun detect(
         page: PDPage,
-        detectionTolerance: Double = 0.3,
-        combineTolerance: Double = 0.3,
-        alignmentTolerance: Double = 0.3,
         debugger: VisualDebugger,
     ): IntersectionDetectorResults {
         val elements = page.getVisualElements(debugger)

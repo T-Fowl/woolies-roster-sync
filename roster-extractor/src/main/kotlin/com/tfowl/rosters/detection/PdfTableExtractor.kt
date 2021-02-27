@@ -1,8 +1,7 @@
-package com.tfowl.rosters
+package com.tfowl.rosters.detection
 
 import com.jakewharton.picnic.Table
-import com.tfowl.rosters.detection.IntersectionDetector
-import com.tfowl.rosters.detection.TableExtractor
+import com.tfowl.rosters.VisualDebugger
 import org.apache.pdfbox.pdmodel.PDPage
 
 /*
@@ -29,15 +28,9 @@ class PdfTableExtractor(
     val alignTolerance: Double = 2.0,
 ) {
     fun extract(page: PDPage, debugger: VisualDebugger): Table {
-        val detection = IntersectionDetector()
-            .detect(
-                page,
-                detectionTolerance,
-                combineTolerance,
-                alignTolerance,
-                debugger
-            )
+        val detection = IntersectionDetector(detectionTolerance, combineTolerance, alignTolerance)
+            .detect(page, debugger)
 
-        return TableExtractor().extract(page, detection, debugger)
+        return TableIdentifier().identify(page, detection, debugger)
     }
 }

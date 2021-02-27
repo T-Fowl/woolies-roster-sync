@@ -1,5 +1,6 @@
 package com.tfowl.rosters
 
+import com.tfowl.rosters.detection.PdfTableExtractor
 import org.apache.pdfbox.pdmodel.PDDocument
 import java.io.File
 

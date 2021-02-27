@@ -7,7 +7,7 @@ fun main(vararg args: String) {
     require(args.isNotEmpty()) { "Usage: [exec] roster-file" }
 
     val document = PDDocument.load(File(args[0]))
-    val extractor = PdfRosterExtractor()
+    val extractor = PdfTableExtractor()
     val rosters = extractor.extract(document)
 
     rosters.forEach { departmentRoster ->

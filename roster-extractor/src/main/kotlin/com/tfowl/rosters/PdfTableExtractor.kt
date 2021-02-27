@@ -24,7 +24,7 @@ Things to consider:
 
  */
 
-class PdfRosterExtractor {
+class PdfTableExtractor {
     private fun obtainTable(page: PDPage, debugger: VisualDebugger): Table {
         val detection = IntersectionDetector()
             .detect(

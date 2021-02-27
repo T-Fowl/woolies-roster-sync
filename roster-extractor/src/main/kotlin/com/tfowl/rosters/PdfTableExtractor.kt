@@ -3,7 +3,6 @@ package com.tfowl.rosters
 import com.jakewharton.picnic.Table
 import com.tfowl.rosters.detection.IntersectionDetector
 import com.tfowl.rosters.detection.TableExtractor
-import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage
 
 /*
@@ -24,26 +23,21 @@ Things to consider:
 
  */
 
-class PdfTableExtractor {
-    private fun obtainTable(page: PDPage, debugger: VisualDebugger): Table {
+class PdfTableExtractor(
+    val detectionTolerance: Double = 0.275,
+    val combineTolerance: Double = 0.275,
+    val alignTolerance: Double = 2.0,
+) {
+    fun extract(page: PDPage, debugger: VisualDebugger): Table {
         val detection = IntersectionDetector()
             .detect(
                 page,
-                detectionTolerance = 0.275,
-                combineTolerance = 0.275,
-                alignmentTolerance = 2.0,
+                detectionTolerance,
+                combineTolerance,
+                alignTolerance,
                 debugger
             )
 
         return TableExtractor().extract(page, detection, debugger)
-    }
-
-    fun extract(document: PDDocument): Set<DepartmentRoster> {
-        val tables = document.pages.map { page ->
-            val visualiser = NoOpVisualDebugger()
-            obtainTable(page, visualiser)
-        }
-
-        return tables.extractDepartmentRosters()
     }
 }

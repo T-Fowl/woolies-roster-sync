@@ -7,8 +7,12 @@ fun main(vararg args: String) {
     require(args.isNotEmpty()) { "Usage: [exec] roster-file" }
 
     val document = PDDocument.load(File(args[0]))
-    val extractor = PdfTableExtractor()
-    val rosters = extractor.extract(document)
+
+    val tables = PdfTableExtractor().let { extractor ->
+        document.pages.map { extractor.extract(it, NoOpVisualDebugger()) }
+    }
+
+    val rosters = TableRostersExtractor().extract(tables)
 
     rosters.forEach { departmentRoster ->
         println(departmentRoster.department)

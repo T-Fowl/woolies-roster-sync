@@ -61,9 +61,13 @@ internal data class DepartmentBuilder(
     fun build(): DepartmentRoster = DepartmentRoster(info, employees.map { it.build() })
 }
 
+
+// Locale.US for capitalised AM/PM
+private val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.US)
+private val timeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.US)
+private val localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h.mm a", Locale.US)
+
 private fun String.tryParseDepartmentHeader(): DepartmentInfoHeader? {
-    val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-    val localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h.mm a")
 
     val regex =
         Regex("""Location Schedule - (?<siteid>\d+) (?<sitename>.+?) - (?<department>.+?) Time Period\s?:\s?(?<from>\d+/\d+/\d+) - (?<to>\d+/\d+/\d+) Executed on: (?<executed>\d+/\d+/\d+\s*\d+\.\d+\s*[AP]M)""")
@@ -78,7 +82,7 @@ private fun String.tryParseDepartmentHeader(): DepartmentInfoHeader? {
                 getValue("from").toLocalDate(localDateFormatter),
                 getValue("to").toLocalDate(localDateFormatter)
             ),
-            getValue("executed").toLocalDate(localDateTimeFormatter)
+            getValue("executed").toLocalDateTime(localDateTimeFormatter).toLocalDate()
         )
     }
 }
@@ -128,10 +132,9 @@ class TableRostersExtractor {
                     val rosterText = table[row, columnIndex].content
                     if (rosterText.isNotBlank()) {
                         val times = Regex("""(?<from>\d+:\d+[AP]) - (?<to>\d+:\d+[AP])""").find(rosterText)?.run {
-                            val formatter = DateTimeFormatter.ofPattern("h:mma")
                             LocalTimeRange(
-                                "${groups.getValue("from")}M".toLocalTime(formatter),
-                                "${groups.getValue("to")}M".toLocalTime(formatter)
+                                "${groups.getValue("from")}M".toLocalTime(timeFormatter),
+                                "${groups.getValue("to")}M".toLocalTime(timeFormatter)
                             )
                         }
 

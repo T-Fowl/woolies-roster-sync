@@ -42,6 +42,9 @@ fun String.toLocalDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCA
 fun String.toLocalTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_TIME): LocalTime =
     LocalTime.parse(this, formatter)
 
+fun String.toLocalDateTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME): LocalDateTime =
+    LocalDateTime.parse(this, formatter)
+
 /**
  * Unsafe but convenient
  */

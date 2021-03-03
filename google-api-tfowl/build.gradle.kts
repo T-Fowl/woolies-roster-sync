@@ -2,7 +2,7 @@ group = "com.tfowl.google-apis"
 version = "1.0-SNAPSHOT"
 
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(kotlin("stdlib-jdk8"))
 
     api("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
     api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1")

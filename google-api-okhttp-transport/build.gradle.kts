@@ -2,7 +2,7 @@ group = "com.tfowl.google-apis"
 version = "1.0-SNAPSHOT"
 
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(kotlin("stdlib-jdk8"))
 
     api("com.squareup.okhttp3:okhttp:3.14.9")
 

@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.4.21"
-    kotlin("plugin.serialization") version "1.4.10" apply false
+    kotlin("jvm") version "1.4.30"
+    kotlin("plugin.serialization") version "1.4.30" apply false
 }
 
 group = "com.tfowl.woolies"
@@ -26,7 +26,7 @@ allprojects {
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
+    implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")

@@ -15,21 +15,21 @@ allprojects {
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_15
+        targetCompatibility = JavaVersion.VERSION_15
     }
 
     tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().all {
-        kotlinOptions.jvmTarget = "1.8"
+        kotlinOptions.jvmTarget = "15"
         kotlinOptions.freeCompilerArgs = listOf("-Xinline-classes", "-Xopt-in=kotlin.RequiresOptIn")
     }
 }
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.3.9")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.0.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.0.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.1.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
     implementation(project(":google-api-tfowl"))
     implementation(project(":workjam"))

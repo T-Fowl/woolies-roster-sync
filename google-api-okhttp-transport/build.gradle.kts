@@ -6,7 +6,7 @@ dependencies {
 
     api("com.squareup.okhttp3:okhttp:3.14.9")
 
-    implementation("com.google.api-client:google-api-client:1.23.0") {
+    implementation("com.google.api-client:google-api-client:1.31.3") {
 
         // Point of this module is to not have to pull in apache httpcomponents
         exclude(group = "org.apache.httpcomponents", module = "httpclient")

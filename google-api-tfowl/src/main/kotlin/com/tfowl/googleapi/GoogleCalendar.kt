@@ -12,7 +12,7 @@ import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClientRe
 import com.google.api.client.http.HttpHeaders
 import com.google.api.client.http.HttpTransport
 import com.google.api.client.json.JsonFactory
-import com.google.api.client.json.jackson2.JacksonFactory
+import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
@@ -47,8 +47,8 @@ private fun getCredentials(
 
 object GoogleCalendar {
     private val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
-    private val httpTransport = OkHttpTransport()
-    private val jsonFactory = JacksonFactory.getDefaultInstance()
+    private val httpTransport: HttpTransport = OkHttpTransport()
+    private val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance()
     private val scopes = listOf(CalendarScopes.CALENDAR)
     val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
 

@@ -16,4 +16,11 @@ dependencies {
     }
 
     implementation(project(":google-api-okhttp-transport"))
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
+    testImplementation("io.mockk:mockk:1.10.6")
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

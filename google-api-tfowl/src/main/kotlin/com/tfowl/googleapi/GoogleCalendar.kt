@@ -17,6 +17,7 @@ import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.CalendarScopes
+import com.google.api.services.calendar.model.Event
 import com.tfowl.googlapi.okhttp.OkHttpTransport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
@@ -57,6 +58,20 @@ object GoogleCalendar {
         .build()
 }
 
+fun Calendar.calendarEvents(id: String) = CalendarEvents(this, id)
+
+class CalendarEvents(
+    private val api: Calendar,
+    private val calendarId: String
+) {
+    fun list() = api.events().list(calendarId)
+    fun insert(event: Event) = api.events().insert(calendarId, event)
+    fun update(id: String, content: Event) = api.events().update(calendarId, id, content)
+    fun delete(id: String) = api.events().delete(calendarId, id)
+    fun get(id: String) = api.events().get(calendarId, id)
+    fun patch(id: String, content: Event) = api.events().patch(calendarId, id, content)
+}
+
 //fun GoogleCalendar(
 //    dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY)),
 //    httpTransport: HttpTransport = OkHttpTransport(),
@@ -69,6 +84,8 @@ object GoogleCalendar {
 //        .build()
 //}
 
+internal class GoogleJsonException(val error: GoogleJsonError) : RuntimeException()
+
 internal fun <T> AbstractGoogleJsonClientRequest<T>.queueDeferred(batch: BatchRequest): Deferred<T> {
     val cp = CompletableDeferred<T>()
 
@@ -78,7 +95,7 @@ internal fun <T> AbstractGoogleJsonClientRequest<T>.queueDeferred(batch: BatchRe
         }
 
         override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
-            cp.completeExceptionally(RuntimeException(e.toPrettyString()))
+            cp.completeExceptionally(GoogleJsonException(e))
         }
     })
 

@@ -11,6 +11,7 @@ import com.google.api.client.googleapis.json.GoogleJsonError
 import com.google.api.client.googleapis.services.json.AbstractGoogleJsonClientRequest
 import com.google.api.client.http.HttpHeaders
 import com.google.api.client.http.HttpTransport
+import com.google.api.client.http.apache.v2.ApacheHttpTransport
 import com.google.api.client.json.JsonFactory
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.DataStoreFactory
@@ -18,7 +19,6 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.calendar.model.Event
-import com.tfowl.googlapi.okhttp.OkHttpTransport
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import java.io.File
@@ -48,7 +48,7 @@ private fun getCredentials(
 
 object GoogleCalendar {
     private val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
-    private val httpTransport: HttpTransport = OkHttpTransport()
+    private val httpTransport: HttpTransport = ApacheHttpTransport()
     private val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance()
     private val scopes = listOf(CalendarScopes.CALENDAR)
     val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)

@@ -17,45 +17,46 @@ import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
-import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.calendar.model.Event
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import java.io.File
 
-const val CLIENT_SECRETS = "client-secrets.json"
-const val TOKENS_DIRECTORY = "tokens_dir"
-const val APPLICATION_NAME = "APPLICATION_NAME"
+const val DEFAULT_TOKENS_DIR = "tokens_dir"
 
-@Suppress("SameParameterValue")
-private fun getCredentials(
-    httpTransport: HttpTransport,
-    jsonFactory: JsonFactory,
-    scopes: List<String>,
-    dataStoreFactory: DataStoreFactory,
-): Credential {
-    val input = File(CLIENT_SECRETS).reader()
-    val secrets = GoogleClientSecrets.load(jsonFactory, input)
-
-    val flow = GoogleAuthorizationCodeFlow.Builder(httpTransport, jsonFactory, secrets, scopes)
-        .setDataStoreFactory(dataStoreFactory)
-        .setAccessType("offline")
-        .build()
-
-    val receiver = LocalServerReceiver.Builder().setPort(8888).build()
-    return AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
-}
+data class GoogleApiServiceConfig(
+    val secrets: File,
+    val applicationName: String,
+    val scopes: List<String>,
+    val httpTransport: HttpTransport = ApacheHttpTransport(),
+    val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance(),
+    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+)
 
 object GoogleCalendar {
-    private val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
-    private val httpTransport: HttpTransport = ApacheHttpTransport()
-    private val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance()
-    private val scopes = listOf(CalendarScopes.CALENDAR)
-    val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
+    private fun getCredentials(
+        config: GoogleApiServiceConfig
+    ): Credential {
+        val input = config.secrets.reader()
+        val secrets = GoogleClientSecrets.load(config.jsonFactory, input)
 
-    val calendar: Calendar = Calendar.Builder(httpTransport, jsonFactory, credentials)
-        .setApplicationName(APPLICATION_NAME)
-        .build()
+        val flow = GoogleAuthorizationCodeFlow.Builder(config.httpTransport, config.jsonFactory, secrets, config.scopes)
+            .setDataStoreFactory(config.dataStoreFactory)
+            .setAccessType("offline")
+            .build()
+
+        val receiver = LocalServerReceiver.Builder().setPort(8888).build()
+        return AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
+    }
+
+    fun create(
+        config: GoogleApiServiceConfig,
+    ): Calendar {
+        val credentials = getCredentials(config)
+        return Calendar.Builder(config.httpTransport, config.jsonFactory, credentials)
+            .setApplicationName(config.applicationName)
+            .build()
+    }
 }
 
 fun Calendar.calendarEvents(id: String) = CalendarEvents(this, id)
@@ -71,18 +72,6 @@ class CalendarEvents(
     fun get(id: String) = api.events().get(calendarId, id)
     fun patch(id: String, content: Event) = api.events().patch(calendarId, id, content)
 }
-
-//fun GoogleCalendar(
-//    dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY)),
-//    httpTransport: HttpTransport = OkHttpTransport(),
-//    jsonFactory: JsonFactory = JacksonFactory.getDefaultInstance(),
-//    scopes: List<String> = listOf(CalendarScopes.CALENDAR)
-//): Calendar {
-//    val credentials = getCredentials(httpTransport, jsonFactory, scopes, dataStoreFactory)
-//    return Calendar.Builder(httpTransport, jsonFactory, credentials)
-//        .setApplicationName(APPLICATION_NAME)
-//        .build()
-//}
 
 internal class GoogleJsonException(val error: GoogleJsonError) : RuntimeException()
 

@@ -3,6 +3,7 @@ package com.tfowl.workjam
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
+import com.google.api.services.calendar.CalendarScopes
 import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
 import com.tfowl.googleapi.*
@@ -80,7 +81,7 @@ suspend fun main(vararg args: String) = coroutineScope {
     val TOKEN_OVERRIDE = args.elementAtOrNull(2)
 
     /* Included by google apis, might as well use for our own serialisation */
-    val dsf: DataStoreFactory = FileDataStoreFactory(File(TOKENS_DIRECTORY))
+    val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
 
     val json = Json {
         ignoreUnknownKeys = true
@@ -97,9 +98,16 @@ suspend fun main(vararg args: String) = coroutineScope {
         syncPeriodStart, syncPeriodEnd
     )
 
-    val timetableCalendar = GoogleCalendar.calendar.calendarEvents(CALENDAR_ID)
+    val calendar = GoogleCalendar.create(
+        GoogleApiServiceConfig(
+            secrets = File("client-secrets.json"),
+            applicationName = "APPLICATION_NAME",
+            scopes = listOf(CalendarScopes.CALENDAR)
+        )
+    )
+    val timetableEvents = calendar.calendarEvents(CALENDAR_ID)
 
-    val googleEvents = timetableCalendar.list()
+    val googleEvents = timetableEvents.list()
         .setMaxResults(2500)
         .setTimeMin(syncPeriodStart.toGoogleDateTime())
         .setTimeMax(syncPeriodEnd.toGoogleDateTime())
@@ -112,7 +120,7 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val descriptionGenerator = MustacheDescriptionGenerator("event-description.hbs")
 
-    val batch = GoogleCalendar.calendar.batch()
+    val batch = calendar.batch()
 
     for (shift in workjamShifts) {
         val coworkingPositions = when (shift.type) {
@@ -145,16 +153,16 @@ suspend fun main(vararg args: String) = coroutineScope {
         val existingGoogleEvent = googleEvents.find { it.iCalUID == event.iCalUID }
 
         if (null != existingGoogleEvent) {
-            timetableCalendar.update(
-                    existingGoogleEvent.id,
-                    event.setId(existingGoogleEvent.id).setStatus("confirmed")
-                )
+            timetableEvents.update(
+                existingGoogleEvent.id,
+                event.setId(existingGoogleEvent.id).setStatus("confirmed")
+            )
                 .queue(batch,
                     success = { println("Updated existing event ${event.iCalUID}") },
                     failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
                 )
         } else {
-            timetableCalendar.insert(event)
+            timetableEvents.insert(event)
                 .queue(batch,
                     success = { println("Created event ${event.iCalUID}") },
                     failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }

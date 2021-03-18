@@ -6,13 +6,10 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.model.Event
 import com.google.api.services.calendar.model.EventDateTime
 import com.tfowl.googleapi.*
-import com.tfowl.workjam.client.Workjam
+import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.WorkjamProvider
 import com.tfowl.workjam.client.model.EventType
 import com.tfowl.workjam.client.model.PositionedCoworkers
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -20,7 +17,6 @@ import java.io.File
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
-import kotlin.system.exitProcess
 
 const val WOOLIES = "6773940"
 
@@ -49,7 +45,7 @@ fun shiftSummary(
 }
 
 private suspend fun createViewModel(
-    workjam: Workjam,
+    workjam: WorkjamClient,
     json: Json,
     coworkingPositions: List<PositionedCoworkers>,
     employeeDataStore: DataStore<String>

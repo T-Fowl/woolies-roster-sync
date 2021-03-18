@@ -8,14 +8,9 @@ dependencies {
     api("org.jetbrains.kotlinx:kotlinx-serialization-core:1.1.0")
     api("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
-    api("com.google.oauth-client:google-oauth-client-jetty:1.31.4") {
-        exclude(group = "org.apache.httpcomponents", module = "httpclient")
-    }
-    api("com.google.apis:google-api-services-calendar:v3-rev20210215-1.31.0") {
-        exclude(group = "org.apache.httpcomponents", module = "httpclient")
-    }
-
-    implementation(project(":google-api-okhttp-transport"))
+    api("com.google.api-client:google-api-client:1.31.3")
+    api("com.google.oauth-client:google-oauth-client-jetty:1.31.4")
+    api("com.google.apis:google-api-services-calendar:v3-rev20210215-1.31.0")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.7.1")
     testImplementation("io.mockk:mockk:1.10.6")

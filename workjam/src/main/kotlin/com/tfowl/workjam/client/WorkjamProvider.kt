@@ -1,65 +1,73 @@
 package com.tfowl.workjam.client
 
-import com.jakewharton.retrofit2.converter.kotlinx.serialization.asConverterFactory
-import com.tfowl.workjam.client.internal.WorkjamEndpoints
-import kotlinx.serialization.ExperimentalSerializationApi
+import com.tfowl.workjam.client.model.AuthResponse
+import io.ktor.client.*
+import io.ktor.client.features.*
+import io.ktor.client.features.json.JsonFeature
+import io.ktor.client.features.json.serializer.*
+import io.ktor.client.features.logging.*
+import io.ktor.client.request.*
 import kotlinx.serialization.json.Json
-import okhttp3.MediaType
-import okhttp3.OkHttpClient
-import retrofit2.Retrofit
-import retrofit2.create
 
 class WorkjamProvider(
-    private val endpoints: WorkjamEndpoints,
     private val credentials: WorkjamCredentialStorage,
+    private val httpEngineProvider: HttpEngineProvider = DefaultHttpEngineProvider(),
 ) {
+    private val client = HttpClient(httpEngineProvider.provide()) {
+        install(DefaultRequest) {
+            header("Accept-Language", "en")
+            header("Origin", "https://app.workjam.com")
+            header("Referer", "https://app.workjam.com/")
+            BrowserUserAgent() // Hehe sneaky
+        }
+        install(JsonFeature) {
+            serializer = KotlinxSerializer(Json {
+                ignoreUnknownKeys = true
+            })
+        }
+        install(Logging) {
+            level = LogLevel.INFO
+            logger = Logger.DEFAULT
+        }
+    }
+
+    private suspend fun auth(old: String): AuthResponse {
+        return client.patch(httpEngineProvider.defaultUrlBuilder().path("auth", "v3").build()) {
+            header("x-token", old)
+        }
+    }
 
     private suspend fun reauthenticate(
         credentials: WorkjamCredentialStorage,
         employeeId: String,
         tokenOverride: String?
     ): String {
-        val old =
-            requireNotNull(tokenOverride ?: credentials.retrieve(employeeId)) { "No token retrievable for $employeeId" }
-        val response = endpoints.auth(old)
+        val old = tokenOverride ?: credentials.retrieve(employeeId)
+        requireNotNull(old) { "No token retrievable for $employeeId" }
+
+        val response = auth(old)
         credentials.store(employeeId, response.token)
         return response.token
     }
 
-    suspend fun create(employee: String, tokenOverride: String? = null): Workjam {
+    suspend fun create(employee: String, tokenOverride: String? = null): WorkjamClient {
         val token = reauthenticate(credentials, employee, tokenOverride)
-        return Workjam(endpoints, token)
+        return WorkjamClient(client.config {
+            install(DefaultRequest) {
+                header("x-token", token)
+                header("Accept-Language", "en")
+                header("Origin", "https://app.workjam.com")
+                header("Referer", "https://app.workjam.com/")
+            }
+        }, httpEngineProvider::defaultUrlBuilder)
     }
 
     companion object {
-
-        @OptIn(ExperimentalSerializationApi::class)
-        private fun createWorkjamEndpoints(json: Json): WorkjamEndpoints {
-            val httpClient = OkHttpClient.Builder()
-                .addInterceptor(
-                    HeadersInterceptor(
-                        "Accept-Language: en",
-                        "Origin: https://app.workjam.com",
-                        "Referer: https://app.workjam.com/"
-                    )
-                )
-                .addInterceptor(LoggingInterceptor())
-
-
-            val retrofit = Retrofit.Builder()
-                .client(httpClient.build())
-                .baseUrl("https://prod-aus-gcp-woolworths-api.workjam.com")
-                .addConverterFactory(json.asConverterFactory(MediaType.get("application/json")))
-                .build()
-
-            return retrofit.create()
-        }
-
-        fun create(credentialsStorage: WorkjamCredentialStorage): WorkjamProvider {
-            val json = Json { ignoreUnknownKeys = true }
-            val endpoints = createWorkjamEndpoints(json)
-
-            return WorkjamProvider(endpoints, credentialsStorage)
+        fun create(
+            credentialsStorage: WorkjamCredentialStorage,
+            httpEngineProvider: HttpEngineProvider = DefaultHttpEngineProvider()
+        ): WorkjamProvider {
+            return WorkjamProvider(credentialsStorage, httpEngineProvider)
         }
     }
 }

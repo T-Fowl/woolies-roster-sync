@@ -11,5 +11,6 @@ dependencies {
     implementation("com.jakewharton.retrofit:retrofit2-kotlinx-serialization-converter:0.6.0")
 
     implementation("io.ktor:ktor-client-core:1.5.2")
+    implementation("io.ktor:ktor-client-cio:1.5.2")
     implementation("io.ktor:ktor-client-serialization-jvm:1.5.2")
 }

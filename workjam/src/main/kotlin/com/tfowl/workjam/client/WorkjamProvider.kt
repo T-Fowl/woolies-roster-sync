@@ -14,6 +14,9 @@ class WorkjamProvider(
     private val httpEngineProvider: HttpEngineProvider = DefaultHttpEngineProvider(),
 ) {
     private val client = HttpClient(httpEngineProvider.provide()) {
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+        }
         install(DefaultRequest) {
             header("Accept-Language", "en")
             header("Origin", "https://app.workjam.com")

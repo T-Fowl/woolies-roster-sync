@@ -1,6 +1,5 @@
 package com.tfowl.workjam
 
-import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
@@ -9,6 +8,7 @@ import com.google.api.services.calendar.model.EventDateTime
 import com.tfowl.googleapi.*
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.WorkjamProvider
+import com.tfowl.workjam.client.model.Employee
 import com.tfowl.workjam.client.model.EventType
 import com.tfowl.workjam.client.model.PositionedCoworkers
 import kotlinx.coroutines.coroutineScope
@@ -47,14 +47,13 @@ fun shiftSummary(
 
 private suspend fun createViewModel(
     workjam: WorkjamClient,
-    json: Json,
     coworkingPositions: List<PositionedCoworkers>,
-    employeeDataStore: DataStore<String>
+    employeeDataStore: DataStorage<Employee>
 ): DescriptionViewModel = DescriptionViewModel(coworkerPositions = coworkingPositions.map { (coworkers, position) ->
     CoworkerPositionViewModel(
         position = position.externalCode,
         coworkers = coworkers.map { coworker ->
-            val employeeDetails = employeeDataStore.computeIfAbsent(json, coworker.id) { id ->
+            val employeeDetails = employeeDataStore.computeIfAbsent(coworker.id) { id ->
                 workjam.employee(WOOLIES, id)
             }
             val employeeNumber = employeeDetails.externalCode ?: ""
@@ -116,7 +115,7 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val zoneId = ZoneId.of("Australia/Sydney")
 
-    val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails")
+    val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails").asDataStorage<Employee>(json)
 
     val descriptionGenerator = MustacheDescriptionGenerator("event-description.hbs")
 
@@ -131,7 +130,7 @@ suspend fun main(vararg args: String) = coroutineScope {
         val start = shift.startDateTime.toLocalDateTime(zoneId)
         val end = shift.endDateTime.toLocalDateTime(zoneId)
 
-        val vm = createViewModel(workjam, json, coworkingPositions, employeeDataStore)
+        val vm = createViewModel(workjam, coworkingPositions, employeeDataStore)
         val description = descriptionGenerator.generate(vm)
 
         val summary = when (shift.type) {

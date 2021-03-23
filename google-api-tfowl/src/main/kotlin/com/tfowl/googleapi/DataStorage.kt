@@ -3,26 +3,10 @@
 package com.tfowl.googleapi
 
 import com.google.api.client.util.store.DataStore
-import kotlinx.serialization.*
-
-@Deprecated("Use DataStorage instead")
-inline fun <reified V> DataStore<String>.get(format: StringFormat, key: String): V? =
-    get(key)?.let { format.decodeFromString(it) }
-
-@Deprecated("Use DataStorage instead")
-inline fun <reified V> DataStore<String>.set(
-    format: StringFormat,
-    key: String,
-    value: V,
-): DataStore<String> = set(key, format.encodeToString(value))
-
-@Deprecated("Use DataStorage instead")
-@Suppress("RedundantSuspendModifier")
-suspend inline fun <reified V> DataStore<String>.computeIfAbsent(
-    format: StringFormat,
-    key: String,
-    provider: (String) -> V,
-): V = get(format, key) ?: provider(key).also { set(format, key, it) }
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
+import kotlinx.serialization.StringFormat
+import kotlinx.serialization.serializer
 
 class DataStorage<V>(
     private val store: DataStore<String>,

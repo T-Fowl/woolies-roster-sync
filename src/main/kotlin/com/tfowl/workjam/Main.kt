@@ -3,14 +3,10 @@ package com.tfowl.workjam
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
-import com.google.api.services.calendar.model.Event
-import com.google.api.services.calendar.model.EventDateTime
 import com.tfowl.googleapi.*
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.WorkjamProvider
-import com.tfowl.workjam.client.model.Employee
-import com.tfowl.workjam.client.model.EventType
-import com.tfowl.workjam.client.model.PositionedCoworkers
+import com.tfowl.workjam.client.model.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
@@ -18,15 +14,20 @@ import java.io.File
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import com.google.api.services.calendar.model.Event as GEvent
 
-const val WOOLIES = "6773940"
+private const val WOOLIES = "6773940"
+private const val CLIENT_SECRETS_FILE = "client-secrets.json"
+private const val APPLICATION_NAME = "APPLICATION_NAME"
+private const val EVENT_DESCRIPTION_TEMPLATE = "event-description.hbs"
+private const val EMPLOYEE_DETAILS_NAME = "EmployeeDetails"
 
 private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
 fun shiftSummary(
     start: LocalTime,
     end: LocalTime,
-    default: String,
+    default: String?,
 ): String {
 
     /* Trucks */
@@ -42,33 +43,53 @@ fun shiftSummary(
     }
 
     /* idk */
-    return default.removeWorkjamPositionPrefix()
+    return default?.removeWorkjamPositionPrefix() ?: "Error: Missing Title"
 }
 
 private suspend fun createViewModel(
     workjam: WorkjamClient,
     coworkingPositions: List<PositionedCoworkers>,
     employeeDataStore: DataStorage<Employee>
-): DescriptionViewModel = DescriptionViewModel(coworkerPositions = coworkingPositions.map { (coworkers, position) ->
-    CoworkerPositionViewModel(
-        position = position.externalCode,
-        coworkers = coworkers.map { coworker ->
-            val employeeDetails = employeeDataStore.computeIfAbsent(coworker.id) { id ->
-                workjam.employee(WOOLIES, id)
-            }
-            val employeeNumber = employeeDetails.externalCode ?: ""
-            val avatarUrl = coworker.avatarUrl?.replace(
-                "/image/upload",
-                "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-            )
-            CoworkerViewModel(coworker.firstName, coworker.lastName, employeeNumber, avatarUrl)
-        }.sortedBy { it.firstName })
-}.sortedBy { it.position })
+): DescriptionViewModel {
+    suspend fun Coworker.toViewModel(): CoworkerViewModel {
+        val employeeDetails = employeeDataStore.computeIfAbsent(id) { id ->
+            workjam.employee(WOOLIES, id)
+        }
+        val employeeNumber = employeeDetails.externalCode ?: ""
+        val avatarUrl = avatarUrl?.replace(
+            "/image/upload",
+            "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+        )
+        return CoworkerViewModel(firstName, lastName, employeeNumber, avatarUrl)
+    }
 
-fun Event.isSameDay(other: Event): Boolean {
-    val thisDay = start.dateTime.toOffsetDateTime().toLocalDate()
-    val thatDay = other.start.dateTime.toOffsetDateTime().toLocalDate()
-    return thisDay == thatDay
+    val coworkerPositionsViewModels = coworkingPositions.map { (coworkers, position) ->
+        CoworkerPositionViewModel(
+            position = position.externalCode,
+            coworkers = coworkers.map { it.toViewModel() }.sortedBy { it.firstName }
+        )
+    }.sortedBy { it.position }
+
+    return DescriptionViewModel(coworkerPositionsViewModels)
+}
+
+val Event.iCalUID get() = "$id@workjam.tfowl.com"
+
+fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
+    val start = startDateTime.toLocalDateTime(zoneId)
+    val end = endDateTime.toLocalDateTime(zoneId)
+
+    val summary = when (type) {
+        EventType.SHIFT                 -> shiftSummary(start.toLocalTime(), end.toLocalTime(), title)
+        EventType.AVAILABILITY_TIME_OFF -> "Time Off"
+    }
+
+    return GEvent()
+        .setStart(startDateTime.toGoogleEventDateTime())
+        .setEnd(endDateTime.toGoogleEventDateTime())
+        .setSummary(summary)
+        .setICalUID(iCalUID)
+        .setDescription(description)
 }
 
 @ExperimentalSerializationApi
@@ -99,8 +120,8 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val calendar = GoogleCalendar.create(
         GoogleApiServiceConfig(
-            secrets = File("client-secrets.json"),
-            applicationName = "APPLICATION_NAME",
+            secrets = File(CLIENT_SECRETS_FILE),
+            applicationName = APPLICATION_NAME,
             scopes = listOf(CalendarScopes.CALENDAR)
         )
     )
@@ -115,9 +136,9 @@ suspend fun main(vararg args: String) = coroutineScope {
 
     val zoneId = ZoneId.of("Australia/Sydney")
 
-    val employeeDataStore = dsf.getDataStore<String>("EmployeeDetails").asDataStorage<Employee>(json)
+    val employeeDataStorage = dsf.getDataStore<String>(EMPLOYEE_DETAILS_NAME).asDataStorage<Employee>(json)
 
-    val descriptionGenerator = MustacheDescriptionGenerator("event-description.hbs")
+    val descriptionGenerator = MustacheDescriptionGenerator(EVENT_DESCRIPTION_TEMPLATE)
 
     val batch = calendar.batch()
 
@@ -127,27 +148,10 @@ suspend fun main(vararg args: String) = coroutineScope {
             EventType.AVAILABILITY_TIME_OFF -> emptyList()
         }
 
-        val start = shift.startDateTime.toLocalDateTime(zoneId)
-        val end = shift.endDateTime.toLocalDateTime(zoneId)
-
-        val vm = createViewModel(workjam, coworkingPositions, employeeDataStore)
+        val vm = createViewModel(workjam, coworkingPositions, employeeDataStorage)
         val description = descriptionGenerator.generate(vm)
 
-        val summary = when (shift.type) {
-            EventType.SHIFT                 -> shiftSummary(
-                start.toLocalTime(),
-                end.toLocalTime(),
-                shift.title ?: "ERROR: MISSING TITLE"
-            )
-            EventType.AVAILABILITY_TIME_OFF -> "Time Off"
-        }
-
-        val event = Event()
-            .setStart(EventDateTime().setDateTime(shift.startDateTime.toGoogleDateTime()))
-            .setEnd(EventDateTime().setDateTime(shift.endDateTime.toGoogleDateTime()))
-            .setSummary(summary)
-            .setICalUID("${shift.id}@workjam.tfowl.com")
-            .setDescription(description)
+        val event = shift.createGoogleEvent(description, zoneId)
 
         val existingGoogleEvent = googleEvents.find { it.iCalUID == event.iCalUID }
 

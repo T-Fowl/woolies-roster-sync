@@ -1,5 +1,6 @@
 package com.tfowl.workjam
 
+import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
@@ -21,10 +22,14 @@ private const val CLIENT_SECRETS_FILE = "client-secrets.json"
 private const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EVENT_DESCRIPTION_TEMPLATE = "event-description.hbs"
 private const val EMPLOYEE_DETAILS_NAME = "EmployeeDetails"
+private const val DEFAULT_ICAL_SUFFIX = "@workjam.tfowl.com"
+private const val TIME_OFF_SUMMARY = "Time Off"
+
+private val Event.iCalUID get() = "$id$DEFAULT_ICAL_SUFFIX"
 
 private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
-fun shiftSummary(
+private fun shiftSummary(
     start: LocalTime,
     end: LocalTime,
     default: String?,
@@ -73,15 +78,13 @@ private suspend fun createViewModel(
     return DescriptionViewModel(coworkerPositionsViewModels)
 }
 
-val Event.iCalUID get() = "$id@workjam.tfowl.com"
-
-fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
+private fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
     val start = startDateTime.toLocalDateTime(zoneId)
     val end = endDateTime.toLocalDateTime(zoneId)
 
     val summary = when (type) {
         EventType.SHIFT                 -> shiftSummary(start.toLocalTime(), end.toLocalTime(), title)
-        EventType.AVAILABILITY_TIME_OFF -> "Time Off"
+        EventType.AVAILABILITY_TIME_OFF -> TIME_OFF_SUMMARY
     }
 
     return GEvent()
@@ -92,57 +95,73 @@ fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemD
         .setDescription(description)
 }
 
-@ExperimentalSerializationApi
-suspend fun main(vararg args: String) = coroutineScope {
-    require(args.size >= 2) { "Usage: workjam-schedule-sync id calendar [workjam jwt]" }
+private fun deleteRedundantShifts(
+    calendar: CalendarEvents,
+    batch: BatchRequest,
+    events: List<GEvent>,
+    shifts: List<GEvent>
+) {
+    events
+        .filter { event -> !event.isCancelled() }
+        .filter { event -> shifts.none { it.iCalUID == event.iCalUID } }
+        .forEach { event ->
+            calendar.delete(event.id).queue(batch,
+                success = { println("Successfully deleted event: ${event.pretty()}") },
+                failure = { println("Failed to delete event ${event.pretty()}: $it") }
+            )
+            println("Deleting redundant shift: ${event.pretty()}")
+        }
+}
 
-    val USER_ID = args[0]
-    val CALENDAR_ID = args[1]
-    val TOKEN_OVERRIDE = args.elementAtOrNull(2)
+private fun modifyExistingShifts(
+    calendar: CalendarEvents,
+    batch: BatchRequest,
+    events: List<GEvent>,
+    shifts: List<GEvent>
+) {
+    shifts.forEach { shift ->
+        events.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+            calendar.update(existing.id, shift).queue(batch,
+                success = { println("Successfully modified event: ${shift.pretty()}") },
+                failure = { println("Failed to modify event ${existing.pretty()}: $it") }
+            )
+            println("Modifying existing shift ${existing.pretty()} to ${shift.pretty()}")
+        }
+    }
+}
 
+private fun createNewShifts(calendar: CalendarEvents, batch: BatchRequest, events: List<GEvent>, shifts: List<GEvent>) {
+    shifts.filter { shift -> events.none { it.iCalUID == shift.iCalUID } }
+        .forEach { shift ->
+            calendar.insert(shift).queue(batch,
+                success = { println("Successfully created shift: ${shift.pretty()}") },
+                failure = { println("Failed to create shift ${shift.pretty()}: $it") }
+            )
+            println("Creating new shift: ${shift.pretty()}")
+        }
+}
+
+private suspend fun retrieveWorkjamShifts(
+    USER_ID: String,
+    TOKEN_OVERRIDE: String?,
+    syncPeriodStart: OffsetDateTime,
+    syncPeriodEnd: OffsetDateTime
+): List<GEvent> {
     /* Included by google apis, might as well use for our own serialisation */
     val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
-
-    val json = Json {
-        ignoreUnknownKeys = true
-    }
-
     val workjamProvider = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
     val workjam = workjamProvider.create(USER_ID, TOKEN_OVERRIDE)
-
-    val syncPeriodStart = OffsetDateTime.now()
-    val syncPeriodEnd = OffsetDateTime.now().plusDays(15)
 
     val workjamShifts = workjam.events(
         WOOLIES, USER_ID,
         syncPeriodStart, syncPeriodEnd
     )
 
-    val calendar = GoogleCalendar.create(
-        GoogleApiServiceConfig(
-            secrets = File(CLIENT_SECRETS_FILE),
-            applicationName = APPLICATION_NAME,
-            scopes = listOf(CalendarScopes.CALENDAR)
-        )
-    )
-    val timetableEvents = calendar.calendarEvents(CALENDAR_ID)
-
-    val googleEvents = timetableEvents.list()
-        .setMaxResults(2500)
-        .setTimeMin(syncPeriodStart.toGoogleDateTime())
-        .setTimeMax(syncPeriodEnd.toGoogleDateTime())
-        .setShowDeleted(true)
-        .execute().items
-
-    val zoneId = ZoneId.of("Australia/Sydney")
-
+    val json = Json { ignoreUnknownKeys = true }
     val employeeDataStorage = dsf.getDataStore<String>(EMPLOYEE_DETAILS_NAME).asDataStorage<Employee>(json)
-
     val descriptionGenerator = MustacheDescriptionGenerator(EVENT_DESCRIPTION_TEMPLATE)
 
-    val batch = calendar.batch()
-
-    for (shift in workjamShifts) {
+    return workjamShifts.map { shift ->
         val coworkingPositions = when (shift.type) {
             EventType.SHIFT                 -> workjam.coworkers(WOOLIES, shift.location.id, shift.id)
             EventType.AVAILABILITY_TIME_OFF -> emptyList()
@@ -151,29 +170,59 @@ suspend fun main(vararg args: String) = coroutineScope {
         val vm = createViewModel(workjam, coworkingPositions, employeeDataStorage)
         val description = descriptionGenerator.generate(vm)
 
-        val event = shift.createGoogleEvent(description, zoneId)
+        shift.createGoogleEvent(description, ZoneId.of("Australia/Sydney"))
+    }
+}
 
-        val existingGoogleEvent = googleEvents.find { it.iCalUID == event.iCalUID }
+private fun syncShiftsToGoogleCalendar(
+    CALENDAR_ID: String,
+    syncPeriodStart: OffsetDateTime,
+    syncPeriodEnd: OffsetDateTime,
+    shiftsAsGEvents: List<GEvent>
+) {
+    val calendar = GoogleCalendar.create(
+        GoogleApiServiceConfig(
+            secrets = File(CLIENT_SECRETS_FILE),
+            applicationName = APPLICATION_NAME,
+            scopes = listOf(CalendarScopes.CALENDAR)
+        )
+    )
+    val timetableCalendar = calendar.calendarEvents(CALENDAR_ID)
 
-        if (null != existingGoogleEvent) {
-            timetableEvents.update(
-                existingGoogleEvent.id,
-                event.setId(existingGoogleEvent.id).setStatus("confirmed")
-            )
-                .queue(batch,
-                    success = { println("Updated existing event ${event.iCalUID}") },
-                    failure = { println("Failed to update existing event ${event.iCalUID}: ${it.toPrettyString()}") }
-                )
-        } else {
-            timetableEvents.insert(event)
-                .queue(batch,
-                    success = { println("Created event ${event.iCalUID}") },
-                    failure = { println("Failed to create event ${event.iCalUID}: ${it.toPrettyString()}") }
-                )
-        }
+    val syncedShifts = timetableCalendar.list()
+        .setMaxResults(2500)
+        .setTimeMin(syncPeriodStart.toGoogleDateTime())
+        .setTimeMax(syncPeriodEnd.toGoogleDateTime())
+        .setShowDeleted(true)
+        .execute().items
+        .filter { DEFAULT_ICAL_SUFFIX in it.iCalUID }
 
-        println("Queueued shift ${event.summary} [${event.start}-${event.end}] (${event.iCalUID})")
+    // TODO: How to handle this? Remove / Recreate / ignore etc
+    syncedShifts.forEach { e ->
+        requireNotNull(e.start.dateTime) { "Unsupported null start datetime for $e" }
     }
 
-    batch.execute()
+    calendar.batched { batch ->
+        deleteRedundantShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
+        modifyExistingShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
+        createNewShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
+    }
+}
+
+
+@ExperimentalSerializationApi
+suspend fun main(vararg args: String) = coroutineScope {
+    require(args.size >= 2) { "Usage: workjam-schedule-sync id calendar [workjam jwt]" }
+
+    val USER_ID = args[0]
+    val CALENDAR_ID = args[1]
+    val TOKEN_OVERRIDE = args.elementAtOrNull(2)
+
+
+    val syncPeriodStart = OffsetDateTime.now()
+    val syncPeriodEnd = OffsetDateTime.now().plusDays(15)
+
+    val shiftsAsGEvents = retrieveWorkjamShifts(USER_ID, TOKEN_OVERRIDE, syncPeriodStart, syncPeriodEnd)
+
+    syncShiftsToGoogleCalendar(CALENDAR_ID, syncPeriodStart, syncPeriodEnd, shiftsAsGEvents)
 }

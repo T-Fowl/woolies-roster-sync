@@ -131,7 +131,7 @@ private fun syncShiftsToGoogleCalendar(
     CALENDAR_ID: String,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime,
-    shiftsAsGEvents: List<GEvent>
+    shifts: List<GEvent>
 ) {
     val calendar = GoogleCalendar.create(
         GoogleApiServiceConfig(
@@ -142,7 +142,7 @@ private fun syncShiftsToGoogleCalendar(
     )
     val timetableCalendar = calendar.calendarEvents(CALENDAR_ID)
 
-    val syncedShifts = timetableCalendar.list()
+    val events = timetableCalendar.list()
         .setMaxResults(2500)
         .setTimeMin(syncPeriodStart.toGoogleDateTime())
         .setTimeMax(syncPeriodEnd.toGoogleDateTime())
@@ -151,37 +151,37 @@ private fun syncShiftsToGoogleCalendar(
         .filter { DEFAULT_ICAL_SUFFIX in it.iCalUID }
 
     // TODO: How to handle this? Remove / Recreate / ignore etc
-    syncedShifts.forEach { e ->
+    events.forEach { e ->
         requireNotNull(e.start.dateTime) { "Unsupported null start datetime for $e" }
     }
 
-    val actions = createGoogleSyncActions(syncedShifts, shiftsAsGEvents)
+    val actions = createGoogleSyncActions(events, shifts)
     calendar.batched { batch ->
         timetableCalendar.queue(batch, actions)
     }
 }
 
-private fun deleteRedundantShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
-    actualEvents
+private fun deleteRedundantShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
+    events
         .filter { event -> !event.isCancelled() }
-        .filter { event -> expectedEvents.none { it.iCalUID == event.iCalUID } }
+        .filter { event -> shifts.none { it.iCalUID == event.iCalUID } }
         .map { SyncAction.Delete(it) }
 
-private fun updateExistingShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
-    expectedEvents.mapNotNull { shift ->
-        actualEvents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+private fun updateExistingShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
+    shifts.mapNotNull { shift ->
+        events.find { it.iCalUID == shift.iCalUID }?.let { existing ->
             SyncAction.Update(existing, shift)
         }
     }
 
-private fun createNewShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
-    expectedEvents.filter { shift -> actualEvents.none { it.iCalUID == shift.iCalUID } }
+private fun createNewShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
+    shifts.filter { shift -> events.none { it.iCalUID == shift.iCalUID } }
         .map { SyncAction.Create(it) }
 
-private fun createGoogleSyncActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
-    createNewShiftsActions(actualEvents, expectedEvents) +
-            updateExistingShiftsActions(actualEvents, expectedEvents) +
-            deleteRedundantShiftsActions(actualEvents, expectedEvents)
+private fun createGoogleSyncActions(events: List<GEvent>, shifts: List<GEvent>) =
+    createNewShiftsActions(events, shifts) +
+            updateExistingShiftsActions(events, shifts) +
+            deleteRedundantShiftsActions(events, shifts)
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
@@ -195,7 +195,7 @@ suspend fun main(vararg args: String) = coroutineScope {
     val syncPeriodStart = OffsetDateTime.now()
     val syncPeriodEnd = OffsetDateTime.now().plusDays(15)
 
-    val shiftsAsGEvents = retrieveWorkjamShifts(USER_ID, TOKEN_OVERRIDE, syncPeriodStart, syncPeriodEnd)
+    val shiftEvents = retrieveWorkjamShifts(USER_ID, TOKEN_OVERRIDE, syncPeriodStart, syncPeriodEnd)
 
-    syncShiftsToGoogleCalendar(CALENDAR_ID, syncPeriodStart, syncPeriodEnd, shiftsAsGEvents)
+    syncShiftsToGoogleCalendar(CALENDAR_ID, syncPeriodStart, syncPeriodEnd, shiftEvents)
 }

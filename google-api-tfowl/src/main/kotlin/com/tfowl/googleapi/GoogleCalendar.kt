@@ -107,9 +107,13 @@ fun <T> AbstractGoogleJsonClientRequest<T>.queue(
     })
 }
 
-inline fun <R> Calendar.batched(block: (BatchRequest) -> R): R {
-    val batch = batch()
-    val result = block(batch)
-    batch.execute()
+class BatchRequestContext(
+    val batch: BatchRequest
+)
+
+inline fun <R> Calendar.batched(block: BatchRequestContext.() -> R): R {
+    val ctx = BatchRequestContext(batch())
+    val result = ctx.block()
+    ctx.batch.execute()
     return result
 }

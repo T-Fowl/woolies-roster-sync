@@ -156,7 +156,7 @@ private fun syncShiftsToGoogleCalendar(
     }
 
     val actions = createGoogleSyncActions(events, shifts)
-    calendar.batched { batch ->
+    calendar.batched {
         timetableCalendar.queue(batch, actions)
     }
 }

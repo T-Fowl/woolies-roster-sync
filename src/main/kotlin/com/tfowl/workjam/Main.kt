@@ -1,6 +1,5 @@
 package com.tfowl.workjam
 
-import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
@@ -95,52 +94,6 @@ private fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId
         .setDescription(description)
 }
 
-private fun deleteRedundantShifts(
-    calendar: CalendarEvents,
-    batch: BatchRequest,
-    events: List<GEvent>,
-    shifts: List<GEvent>
-) {
-    events
-        .filter { event -> !event.isCancelled() }
-        .filter { event -> shifts.none { it.iCalUID == event.iCalUID } }
-        .forEach { event ->
-            calendar.delete(event.id).queue(batch,
-                success = { println("Successfully deleted event: ${event.pretty()}") },
-                failure = { println("Failed to delete event ${event.pretty()}: $it") }
-            )
-            println("Deleting redundant shift: ${event.pretty()}")
-        }
-}
-
-private fun modifyExistingShifts(
-    calendar: CalendarEvents,
-    batch: BatchRequest,
-    events: List<GEvent>,
-    shifts: List<GEvent>
-) {
-    shifts.forEach { shift ->
-        events.find { it.iCalUID == shift.iCalUID }?.let { existing ->
-            calendar.update(existing.id, shift).queue(batch,
-                success = { println("Successfully modified event: ${shift.pretty()}") },
-                failure = { println("Failed to modify event ${existing.pretty()}: $it") }
-            )
-            println("Modifying existing shift ${existing.pretty()} to ${shift.pretty()}")
-        }
-    }
-}
-
-private fun createNewShifts(calendar: CalendarEvents, batch: BatchRequest, events: List<GEvent>, shifts: List<GEvent>) {
-    shifts.filter { shift -> events.none { it.iCalUID == shift.iCalUID } }
-        .forEach { shift ->
-            calendar.insert(shift).queue(batch,
-                success = { println("Successfully created shift: ${shift.pretty()}") },
-                failure = { println("Failed to create shift ${shift.pretty()}: $it") }
-            )
-            println("Creating new shift: ${shift.pretty()}")
-        }
-}
-
 private suspend fun retrieveWorkjamShifts(
     USER_ID: String,
     TOKEN_OVERRIDE: String?,
@@ -202,13 +155,33 @@ private fun syncShiftsToGoogleCalendar(
         requireNotNull(e.start.dateTime) { "Unsupported null start datetime for $e" }
     }
 
+    val actions = createGoogleSyncActions(syncedShifts, shiftsAsGEvents)
     calendar.batched { batch ->
-        deleteRedundantShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
-        modifyExistingShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
-        createNewShifts(timetableCalendar, batch, syncedShifts, shiftsAsGEvents)
+        timetableCalendar.queue(batch, actions)
     }
 }
 
+private fun deleteRedundantShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
+    actualEvents
+        .filter { event -> !event.isCancelled() }
+        .filter { event -> expectedEvents.none { it.iCalUID == event.iCalUID } }
+        .map { SyncAction.Delete(it) }
+
+private fun updateExistingShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
+    expectedEvents.mapNotNull { shift ->
+        actualEvents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+            SyncAction.Update(existing, shift)
+        }
+    }
+
+private fun createNewShiftsActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
+    expectedEvents.filter { shift -> actualEvents.none { it.iCalUID == shift.iCalUID } }
+        .map { SyncAction.Create(it) }
+
+private fun createGoogleSyncActions(actualEvents: List<GEvent>, expectedEvents: List<GEvent>) =
+    createNewShiftsActions(actualEvents, expectedEvents) +
+            updateExistingShiftsActions(actualEvents, expectedEvents) +
+            deleteRedundantShiftsActions(actualEvents, expectedEvents)
 
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {

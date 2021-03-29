@@ -4,12 +4,10 @@ package com.tfowl.rosters
 
 import java.time.LocalDate
 
-data class DepartmentInfoHeader(
+data class DepartmentInfo(
     val siteCode: Int,
     val siteName: String,
     val name: String,
-    val timePeriod: LocalDateRange,
-    val executedOn: LocalDate,
 )
 
 data class Shift(
@@ -30,7 +28,14 @@ data class DepartmentEmployee(
     val jobs: List<DepartmentJob>,
 )
 
+
 data class DepartmentRoster(
-    val department: DepartmentInfoHeader,
+    val departmentInfo: DepartmentInfo,
+    val timePeriod: LocalDateRange,
+    val executedOn: LocalDate,
     val employees: List<DepartmentEmployee>,
+)
+
+data class Roster(
+    val departments: List<DepartmentRoster>
 )

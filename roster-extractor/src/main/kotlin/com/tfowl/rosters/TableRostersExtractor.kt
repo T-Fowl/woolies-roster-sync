@@ -20,11 +20,21 @@ private data class EmployeeBuilder(
     fun build(): DepartmentEmployee = DepartmentEmployee(name, jobs.map { it.build() })
 }
 
+private data class DepartmentHeader(
+    val siteCode: Int,
+    val siteName: String,
+    val name: String,
+    val timePeriod: LocalDateRange,
+    val executedOn: LocalDate,
+)
+
 private data class DepartmentBuilder(
-    val info: DepartmentInfoHeader,
+    val info: DepartmentInfo,
+    val timePeriod: LocalDateRange,
+    val executedOn: LocalDate,
     val employees: MutableList<EmployeeBuilder> = mutableListOf(),
 ) {
-    fun build(): DepartmentRoster = DepartmentRoster(info, employees.map { it.build() })
+    fun build(): DepartmentRoster = DepartmentRoster(info, timePeriod, executedOn, employees.map { it.build() })
 }
 
 
@@ -33,14 +43,14 @@ private val localDateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Local
 private val timeFormatter = DateTimeFormatter.ofPattern("h:mma", Locale.US)
 private val localDateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy h.mm a", Locale.US)
 
-private fun String.tryParseDepartmentHeader(): DepartmentInfoHeader? {
+private fun String.tryParseDepartmentHeader(): DepartmentHeader? {
 
     val regex =
         Regex("""Location Schedule - (?<siteid>\d+) (?<sitename>.+?) - (?<department>.+?) Time Period\s?:\s?(?<from>\d+/\d+/\d+) - (?<to>\d+/\d+/\d+) Executed on: (?<executed>\d+/\d+/\d+\s*\d+\.\d+\s*[AP]M)""")
     val match = regex.find(this) ?: return null
 
     return with(match.groups) {
-        DepartmentInfoHeader(
+        DepartmentHeader(
             getValue("siteid").toInt(),
             getValue("sitename"),
             getValue("department"),
@@ -68,11 +78,14 @@ class TableRostersExtractor {
     private val departmentBuilders = mutableListOf<DepartmentBuilder>()
     private var currentDepartment: DepartmentBuilder? = null
 
-    private fun nextDepartment(header: DepartmentInfoHeader) {
-        currentDepartment = DepartmentBuilder(header).also { departmentBuilders.add(it) }
+    private fun nextDepartment(header: DepartmentHeader) {
+        currentDepartment = DepartmentBuilder(
+            DepartmentInfo(header.siteCode, header.siteName, header.name),
+            header.timePeriod, header.executedOn
+        ).also { departmentBuilders.add(it) }
     }
 
-    fun extract(tables: List<Table>): Set<DepartmentRoster> {
+    fun extract(tables: List<Table>): Roster {
         for (table in tables) {
             if ("Location Schedule" in table[0, 0].content) {
                 val header = table[0, 0].content.tryParseDepartmentHeader() ?: error("Unmatched header")
@@ -109,11 +122,7 @@ class TableRostersExtractor {
                 }
             }
         }
-        return departmentBuilders.map { it.build() }.toSet()
+        return Roster(departmentBuilders.map { it.build() })
     }
 }
 
-fun List<Table>.extractDepartmentRosters(): Set<DepartmentRoster> {
-    val extractor = TableRostersExtractor()
-    return extractor.extract(this)
-}

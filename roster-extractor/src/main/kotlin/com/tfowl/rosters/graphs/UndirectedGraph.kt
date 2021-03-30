@@ -78,3 +78,26 @@ fun <N> UndirectedGraph<N>.forEachEdge(consumer: (N, N) -> Unit) {
         }
     }
 }
+
+fun <V> UndirectedGraph<V>.firstPairOrNull(p: (V, V) -> Boolean): Pair<V, V>? {
+    return nodes.asSequence().mapNotNull { a ->
+        nodes.firstOrNull { b ->
+            b !== a && p(a, b)
+        }?.let { b -> a to b }
+    }.firstOrNull()
+}
+
+fun <V> MutableUndirectedGraph<V>.merge(a: V, b: V) {
+    require(a in nodes) { "$a not in graph" }
+    require(b in nodes) { "$b not in graph" }
+
+    val siblings = hashSetOf<V>()
+    edges[a]?.let { siblings += it }
+    edges[b]?.let { siblings += it }
+
+    removeNode(a)
+    removeNode(b)
+
+    addNode(a)
+    siblings.forEach { sib -> addEdge(a, sib) }
+}

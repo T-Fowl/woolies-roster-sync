@@ -1,5 +1,6 @@
 package com.tfowl.rosters.pdf
 
+import java.awt.geom.AffineTransform
 import java.awt.geom.Point2D
 import kotlin.math.sqrt
 
@@ -19,3 +20,10 @@ data class Point(val x: Double, val y: Double) {
 }
 
 internal fun Point2D.toPoint() = Point(x, y)
+
+
+internal operator fun AffineTransform.invoke(point: Point): Point {
+    val a = Point2D.Double(point.x, point.y)
+    val b = transform(a, null)
+    return b.toPoint()
+}

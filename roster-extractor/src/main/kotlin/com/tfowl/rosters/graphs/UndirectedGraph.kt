@@ -26,8 +26,10 @@ data class MutableUndirectedGraphImpl<N>(
         nodes -= node
 
         edges[node]?.forEach { sibling ->
-            removeEdge(node, sibling)
+            edges[sibling]?.remove(node)
         }
+
+        edges.remove(node)
     }
 
     override fun addEdge(a: N, b: N) {

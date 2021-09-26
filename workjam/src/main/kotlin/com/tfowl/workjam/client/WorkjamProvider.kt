@@ -61,6 +61,7 @@ class WorkjamProvider(
                 header("Accept-Language", "en")
                 header("Origin", "https://app.workjam.com")
                 header("Referer", "https://app.workjam.com/")
+                BrowserUserAgent()
             }
         }, httpEngineProvider::defaultUrlBuilder)
     }

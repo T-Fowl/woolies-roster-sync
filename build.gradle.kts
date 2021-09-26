@@ -31,7 +31,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.1.0")
 
-    implementation(project(":google-api-tfowl"))
+    implementation(project(":google-calendar-extensions"))
     implementation(project(":workjam"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.6")

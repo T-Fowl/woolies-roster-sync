@@ -1,5 +1,5 @@
 rootProject.name = "woolies-roster-sync"
 
-include("google-api-tfowl")
+include("google-calendar-extensions")
 include("workjam")
 include("roster-extractor")

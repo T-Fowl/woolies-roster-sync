@@ -59,9 +59,9 @@ object GoogleCalendar {
     }
 }
 
-fun Calendar.calendarEvents(id: String) = CalendarEvents(this, id)
+fun Calendar.calendarView(id: String) = CalendarView(this, id)
 
-class CalendarEvents(
+class CalendarView(
     private val api: Calendar,
     private val calendarId: String
 ) {

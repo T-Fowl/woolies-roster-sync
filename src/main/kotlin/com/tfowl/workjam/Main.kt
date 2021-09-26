@@ -21,7 +21,7 @@ private const val WOOLIES = "6773940"
 private const val CLIENT_SECRETS_FILE = "client-secrets.json"
 private const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EVENT_DESCRIPTION_TEMPLATE = "event-description.hbs"
-private const val EMPLOYEE_DETAILS_NAME = "EmployeeDetails"
+private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
 private const val DEFAULT_ICAL_SUFFIX = "@workjam.tfowl.com"
 private const val TIME_OFF_SUMMARY = "Time Off"
 
@@ -98,7 +98,7 @@ private fun Event.toGoogleEvent(description: String, zoneId: ZoneId = ZoneId.sys
 private suspend fun retrieveWorkjamShifts(
     workjam: WorkjamClient,
     employeeId: String,
-    dsf: DataStoreFactory,
+    employeeDataStorage: DataStorage<Employee>,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime
 ): List<GEvent> {
@@ -108,8 +108,6 @@ private suspend fun retrieveWorkjamShifts(
         syncPeriodStart, syncPeriodEnd
     )
 
-    val json = Json { ignoreUnknownKeys = true }
-    val employeeDataStorage = dsf.getDataStore<String>(EMPLOYEE_DETAILS_NAME).asDataStorage<Employee>(json)
     val descriptionGenerator = MustacheDescriptionGenerator(EVENT_DESCRIPTION_TEMPLATE)
 
     return workjamShifts.map { shift ->
@@ -126,15 +124,15 @@ private suspend fun retrieveWorkjamShifts(
 }
 
 private fun syncShiftsToGoogleCalendar(
-    googleCalendar: Calendar,
+    calendar: Calendar,
     calendarId: String,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime,
     shifts: List<GEvent>
 ) {
-    val timetableCalendar = googleCalendar.calendarEvents(calendarId)
+    val timetable = calendar.calendarView(calendarId)
 
-    val events = timetableCalendar.list()
+    val events = timetable.list()
         .setMaxResults(2500)
         .setTimeMin(syncPeriodStart.toGoogleDateTime())
         .setTimeMax(syncPeriodEnd.toGoogleDateTime())
@@ -148,40 +146,26 @@ private fun syncShiftsToGoogleCalendar(
     }
 
     val actions = createGoogleSyncActions(events, shifts)
-    googleCalendar.batched {
-        timetableCalendar.queue(batch, actions)
+    calendar.batched {
+        timetable.queue(batch, actions)
     }
 }
 
-private fun deleteRedundantShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
-    currentEvents
-        .filter { event -> !event.isCancelled() }
-        .filter { event -> desiredEvents.none { it.iCalUID == event.iCalUID } }
-        .map { SyncAction.Delete(it) }
+private fun createGoogleSyncActions(currents: List<GEvent>, targets: List<GEvent>): List<SyncAction> {
+    val create = targets.filter { shift -> currents.none { it.iCalUID == shift.iCalUID } }
+        .map { SyncAction.Create(it) }
 
-private fun updateExistingShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
-    desiredEvents.mapNotNull { shift ->
-        currentEvents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+    val update = targets.mapNotNull { shift ->
+        currents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
             SyncAction.Update(existing, shift)
         }
     }
 
-private fun createNewShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
-    desiredEvents.filter { shift -> currentEvents.none { it.iCalUID == shift.iCalUID } }
-        .map { SyncAction.Create(it) }
+    val delete = currents
+        .filter { event -> !event.isCancelled() && targets.none { it.iCalUID == event.iCalUID } }
+        .map { SyncAction.Delete(it) }
 
-private fun createGoogleSyncActions(events: List<GEvent>, shifts: List<GEvent>) =
-    createNewShiftsActions(events, shifts) +
-            updateExistingShiftsActions(events, shifts) +
-            deleteRedundantShiftsActions(events, shifts)
-
-private suspend fun createWorkjamClient(
-    dataStoreFactory: DataStoreFactory,
-    employeeId: String,
-    tokenOverride: String? = null
-): WorkjamClient {
-    return WorkjamProvider.create(DataStoreCredentialStorage(dataStoreFactory))
-        .create(employeeId, tokenOverride)
+    return create + update + delete
 }
 
 private suspend fun sync(
@@ -191,10 +175,16 @@ private suspend fun sync(
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime
 ) {
-    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+    val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
 
-    val workjam = createWorkjamClient(dataStoreFactory, workjamUserId, workjamTokenOverride)
-    val workjamShifts = retrieveWorkjamShifts(workjam, workjamUserId, dataStoreFactory, syncPeriodStart, syncPeriodEnd)
+    val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json {
+        ignoreUnknownKeys = true
+    })
+
+    val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
+        .create(workjamUserId, workjamTokenOverride)
+    val workjamShifts =
+        retrieveWorkjamShifts(workjam, workjamUserId, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
 
 
     val googleCalendar = GoogleCalendar.create(
@@ -202,7 +192,7 @@ private suspend fun sync(
             secrets = File(CLIENT_SECRETS_FILE),
             applicationName = APPLICATION_NAME,
             scopes = listOf(CalendarScopes.CALENDAR),
-            dataStoreFactory = dataStoreFactory
+            dataStoreFactory = dsf
         )
     )
 

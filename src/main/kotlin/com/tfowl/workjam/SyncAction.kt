@@ -2,7 +2,7 @@ package com.tfowl.workjam
 
 import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.services.calendar.model.Event
-import com.tfowl.googleapi.CalendarEvents
+import com.tfowl.googleapi.CalendarView
 import com.tfowl.googleapi.pretty
 import com.tfowl.googleapi.queue
 
@@ -22,7 +22,7 @@ sealed class SyncAction {
     }
 }
 
-fun CalendarEvents.queue(batch: BatchRequest, action: SyncAction) {
+fun CalendarView.queue(batch: BatchRequest, action: SyncAction) {
     val request = when (action) {
         is SyncAction.Create -> insert(action.item)
         is SyncAction.Update -> update(action.original.id, action.updated)
@@ -35,5 +35,5 @@ fun CalendarEvents.queue(batch: BatchRequest, action: SyncAction) {
     )
 }
 
-fun CalendarEvents.queue(batch: BatchRequest, actions: List<SyncAction>) =
+fun CalendarView.queue(batch: BatchRequest, actions: List<SyncAction>) =
     actions.forEach { queue(batch, it) }

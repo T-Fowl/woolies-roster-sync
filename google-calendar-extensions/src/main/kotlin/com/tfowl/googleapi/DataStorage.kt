@@ -3,6 +3,7 @@
 package com.tfowl.googleapi
 
 import com.google.api.client.util.store.DataStore
+import com.google.api.client.util.store.DataStoreFactory
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.StringFormat
@@ -30,3 +31,7 @@ inline fun <reified V> DataStore<String>.asDataStorage(format: StringFormat): Da
 
 fun <V> DataStore<String>.asDataStorage(format: StringFormat, serialiser: KSerializer<V>): DataStorage<V> =
     DataStorage(this, format, serialiser)
+
+inline fun <reified V> DataStoreFactory.getDataStorage(id: String, format: StringFormat): DataStorage<V> {
+    return getDataStore<String>(id).asDataStorage(format)
+}

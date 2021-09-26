@@ -2,6 +2,7 @@ package com.tfowl.workjam
 
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
+import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.*
 import com.tfowl.workjam.client.WorkjamClient
@@ -77,7 +78,7 @@ private suspend fun createViewModel(
     return DescriptionViewModel(coworkerPositionsViewModels)
 }
 
-private fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
+private fun Event.toGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
     val start = startDateTime.toLocalDateTime(zoneId)
     val end = endDateTime.toLocalDateTime(zoneId)
 
@@ -95,18 +96,15 @@ private fun Event.createGoogleEvent(description: String, zoneId: ZoneId = ZoneId
 }
 
 private suspend fun retrieveWorkjamShifts(
-    USER_ID: String,
-    TOKEN_OVERRIDE: String?,
+    workjam: WorkjamClient,
+    employeeId: String,
+    dsf: DataStoreFactory,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime
 ): List<GEvent> {
-    /* Included by google apis, might as well use for our own serialisation */
-    val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
-    val workjamProvider = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
-    val workjam = workjamProvider.create(USER_ID, TOKEN_OVERRIDE)
 
     val workjamShifts = workjam.events(
-        WOOLIES, USER_ID,
+        WOOLIES, employeeId,
         syncPeriodStart, syncPeriodEnd
     )
 
@@ -123,24 +121,18 @@ private suspend fun retrieveWorkjamShifts(
         val vm = createViewModel(workjam, coworkingPositions, employeeDataStorage)
         val description = descriptionGenerator.generate(vm)
 
-        shift.createGoogleEvent(description, ZoneId.of("Australia/Sydney"))
+        shift.toGoogleEvent(description, ZoneId.of("Australia/Sydney"))
     }
 }
 
 private fun syncShiftsToGoogleCalendar(
-    CALENDAR_ID: String,
+    googleCalendar: Calendar,
+    calendarId: String,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime,
     shifts: List<GEvent>
 ) {
-    val calendar = GoogleCalendar.create(
-        GoogleApiServiceConfig(
-            secrets = File(CLIENT_SECRETS_FILE),
-            applicationName = APPLICATION_NAME,
-            scopes = listOf(CalendarScopes.CALENDAR)
-        )
-    )
-    val timetableCalendar = calendar.calendarEvents(CALENDAR_ID)
+    val timetableCalendar = googleCalendar.calendarEvents(calendarId)
 
     val events = timetableCalendar.list()
         .setMaxResults(2500)
@@ -156,26 +148,26 @@ private fun syncShiftsToGoogleCalendar(
     }
 
     val actions = createGoogleSyncActions(events, shifts)
-    calendar.batched {
+    googleCalendar.batched {
         timetableCalendar.queue(batch, actions)
     }
 }
 
-private fun deleteRedundantShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
-    events
+private fun deleteRedundantShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
+    currentEvents
         .filter { event -> !event.isCancelled() }
-        .filter { event -> shifts.none { it.iCalUID == event.iCalUID } }
+        .filter { event -> desiredEvents.none { it.iCalUID == event.iCalUID } }
         .map { SyncAction.Delete(it) }
 
-private fun updateExistingShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
-    shifts.mapNotNull { shift ->
-        events.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+private fun updateExistingShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
+    desiredEvents.mapNotNull { shift ->
+        currentEvents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
             SyncAction.Update(existing, shift)
         }
     }
 
-private fun createNewShiftsActions(events: List<GEvent>, shifts: List<GEvent>) =
-    shifts.filter { shift -> events.none { it.iCalUID == shift.iCalUID } }
+private fun createNewShiftsActions(currentEvents: List<GEvent>, desiredEvents: List<GEvent>) =
+    desiredEvents.filter { shift -> currentEvents.none { it.iCalUID == shift.iCalUID } }
         .map { SyncAction.Create(it) }
 
 private fun createGoogleSyncActions(events: List<GEvent>, shifts: List<GEvent>) =
@@ -183,19 +175,50 @@ private fun createGoogleSyncActions(events: List<GEvent>, shifts: List<GEvent>) 
             updateExistingShiftsActions(events, shifts) +
             deleteRedundantShiftsActions(events, shifts)
 
+private suspend fun createWorkjamClient(
+    dataStoreFactory: DataStoreFactory,
+    employeeId: String,
+    tokenOverride: String? = null
+): WorkjamClient {
+    return WorkjamProvider.create(DataStoreCredentialStorage(dataStoreFactory))
+        .create(employeeId, tokenOverride)
+}
+
+private suspend fun sync(
+    workjamUserId: String,
+    workjamTokenOverride: String?,
+    googleCalendarId: String,
+    syncPeriodStart: OffsetDateTime,
+    syncPeriodEnd: OffsetDateTime
+) {
+    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+
+    val workjam = createWorkjamClient(dataStoreFactory, workjamUserId, workjamTokenOverride)
+    val workjamShifts = retrieveWorkjamShifts(workjam, workjamUserId, dataStoreFactory, syncPeriodStart, syncPeriodEnd)
+
+
+    val googleCalendar = GoogleCalendar.create(
+        GoogleApiServiceConfig(
+            secrets = File(CLIENT_SECRETS_FILE),
+            applicationName = APPLICATION_NAME,
+            scopes = listOf(CalendarScopes.CALENDAR),
+            dataStoreFactory = dataStoreFactory
+        )
+    )
+
+    syncShiftsToGoogleCalendar(googleCalendar, googleCalendarId, syncPeriodStart, syncPeriodEnd, workjamShifts)
+}
+
 @ExperimentalSerializationApi
 suspend fun main(vararg args: String) = coroutineScope {
     require(args.size >= 2) { "Usage: workjam-schedule-sync id calendar [workjam jwt]" }
 
-    val USER_ID = args[0]
-    val CALENDAR_ID = args[1]
-    val TOKEN_OVERRIDE = args.elementAtOrNull(2)
-
+    val workjamUserId = args[0]
+    val googleCalendarId = args[1]
+    val workjamTokenOverride = args.elementAtOrNull(2)
 
     val syncPeriodStart = OffsetDateTime.now()
     val syncPeriodEnd = OffsetDateTime.now().plusDays(15)
 
-    val shiftEvents = retrieveWorkjamShifts(USER_ID, TOKEN_OVERRIDE, syncPeriodStart, syncPeriodEnd)
-
-    syncShiftsToGoogleCalendar(CALENDAR_ID, syncPeriodStart, syncPeriodEnd, shiftEvents)
+    sync(workjamUserId, workjamTokenOverride, googleCalendarId, syncPeriodStart, syncPeriodEnd)
 }

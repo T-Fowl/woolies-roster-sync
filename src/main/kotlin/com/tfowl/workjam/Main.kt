@@ -53,6 +53,7 @@ private fun shiftSummary(
 
 private suspend fun createViewModel(
     workjam: WorkjamClient,
+    shift: Event,
     coworkingPositions: List<PositionedCoworkers>,
     employeeDataStore: DataStorage<Employee>
 ): DescriptionViewModel {
@@ -75,7 +76,7 @@ private suspend fun createViewModel(
         )
     }.sortedBy { it.position }
 
-    return DescriptionViewModel(coworkerPositionsViewModels)
+    return DescriptionViewModel(shift.startDateTime, shift.endDateTime, coworkerPositionsViewModels)
 }
 
 private fun Event.toGoogleEvent(description: String, zoneId: ZoneId = ZoneId.systemDefault()): GEvent {
@@ -116,7 +117,7 @@ private suspend fun retrieveWorkjamShifts(
             EventType.AVAILABILITY_TIME_OFF -> emptyList()
         }
 
-        val vm = createViewModel(workjam, coworkingPositions, employeeDataStorage)
+        val vm = createViewModel(workjam, shift, coworkingPositions, employeeDataStorage)
         val description = descriptionGenerator.generate(vm)
 
         shift.toGoogleEvent(description, ZoneId.of("Australia/Sydney"))

@@ -1,8 +1,11 @@
+@file:Suppress("unused")
+
 package com.tfowl.workjam
 
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.Mustache
 import java.io.StringWriter
+import java.time.OffsetDateTime
 
 internal fun Mustache.execute(scope: Any): String {
     val sw = StringWriter()
@@ -10,7 +13,11 @@ internal fun Mustache.execute(scope: Any): String {
     return sw.toString()
 }
 
-internal data class DescriptionViewModel(val coworkerPositions: List<CoworkerPositionViewModel>)
+internal data class DescriptionViewModel(
+    val startDateTime: OffsetDateTime,
+    val endDateTime: OffsetDateTime,
+    val coworkerPositions: List<CoworkerPositionViewModel>
+)
 
 internal data class CoworkerPositionViewModel(
     val position: String,

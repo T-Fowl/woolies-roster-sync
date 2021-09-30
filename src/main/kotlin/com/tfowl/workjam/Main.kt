@@ -1,5 +1,11 @@
 package com.tfowl.workjam
 
+import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.arguments.argument
+import com.github.ajalt.clikt.parameters.arguments.optional
+import com.github.ajalt.clikt.parameters.options.convert
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
@@ -8,8 +14,7 @@ import com.tfowl.googleapi.*
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.WorkjamProvider
 import com.tfowl.workjam.client.model.*
-import kotlinx.coroutines.coroutineScope
-import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.LocalTime
@@ -169,47 +174,49 @@ private fun createGoogleSyncActions(currents: List<GEvent>, targets: List<GEvent
     return create + update + delete
 }
 
-private suspend fun sync(
-    workjamUserId: String,
-    workjamTokenOverride: String?,
-    googleCalendarId: String,
-    syncPeriodStart: OffsetDateTime,
-    syncPeriodEnd: OffsetDateTime
-) {
-    val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+class Sync : CliktCommand() {
+    val workjamUserId by argument(help = "Workjam User Id")
+    val googleCalendarId by argument(help = "Google Calendar Calendar Id")
+    val workjamTokenOverride by argument(help = "Workjam jwt token").optional()
 
-    val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json {
-        ignoreUnknownKeys = true
-    })
+    val syncPeriodStart by option(help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format")
+        .convert("OFFSET_DATE_TIME") {
+            it.toOffsetDateTimeOrNull()
+                ?: fail("A date in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format is required")
+        }
+        .default(OffsetDateTime.now())
 
-    val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
-        .create(workjamUserId, workjamTokenOverride)
-    val workjamShifts =
-        retrieveWorkjamShifts(workjam, workjamUserId, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
+    val syncPeriodEnd by option(help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format")
+        .convert("OFFSET_DATE_TIME") {
+            it.toOffsetDateTimeOrNull()
+                ?: fail("A date in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format is required")
+        }
+        .default(OffsetDateTime.now().plusDays(15))
 
+    override fun run() = runBlocking {
+        val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
 
-    val googleCalendar = GoogleCalendar.create(
-        GoogleApiServiceConfig(
-            secrets = File(CLIENT_SECRETS_FILE),
-            applicationName = APPLICATION_NAME,
-            scopes = listOf(CalendarScopes.CALENDAR),
-            dataStoreFactory = dsf
+        val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json {
+            ignoreUnknownKeys = true
+        })
+
+        val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
+            .create(workjamUserId, workjamTokenOverride)
+
+        val googleCalendar = GoogleCalendar.create(
+            GoogleApiServiceConfig(
+                secrets = File(CLIENT_SECRETS_FILE),
+                applicationName = APPLICATION_NAME,
+                scopes = listOf(CalendarScopes.CALENDAR),
+                dataStoreFactory = dsf
+            )
         )
-    )
 
-    syncShiftsToGoogleCalendar(googleCalendar, googleCalendarId, syncPeriodStart, syncPeriodEnd, workjamShifts)
+        val workjamShifts =
+            retrieveWorkjamShifts(workjam, workjamUserId, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
+
+        syncShiftsToGoogleCalendar(googleCalendar, googleCalendarId, syncPeriodStart, syncPeriodEnd, workjamShifts)
+    }
 }
 
-@ExperimentalSerializationApi
-suspend fun main(vararg args: String) = coroutineScope {
-    require(args.size >= 2) { "Usage: workjam-schedule-sync id calendar [workjam jwt]" }
-
-    val workjamUserId = args[0]
-    val googleCalendarId = args[1]
-    val workjamTokenOverride = args.elementAtOrNull(2)
-
-    val syncPeriodStart = OffsetDateTime.now()
-    val syncPeriodEnd = OffsetDateTime.now().plusDays(15)
-
-    sync(workjamUserId, workjamTokenOverride, googleCalendarId, syncPeriodStart, syncPeriodEnd)
-}
+fun main(vararg args: String) = Sync().main(args)

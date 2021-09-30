@@ -16,7 +16,6 @@ import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
 import com.tfowl.googleapi.getDataStorage
 import com.tfowl.workjam.client.WorkjamProvider
-import com.tfowl.workjam.client.model.Event
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -24,10 +23,9 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-internal const val WOOLIES = "6773940"
+private const val WOOLIES = "6773940"
 private const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
-internal const val TIME_OFF_SUMMARY = "Time Off"
 private const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
 private const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 private const val DEFAULT_DESCRIPTION_TEMPLATE = "event-description.hbs"
@@ -107,6 +105,7 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
 
         val transformer = EventTransformer(
             workjam,
+            WOOLIES,
             dsf.getDataStorage(EMPLOYEE_DATASTORE_ID, Json),
             calendarZoneId,
             iCalManager,

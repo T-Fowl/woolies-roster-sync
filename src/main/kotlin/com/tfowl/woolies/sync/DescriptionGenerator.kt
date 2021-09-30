@@ -14,6 +14,7 @@ internal fun Mustache.execute(scope: Any): String {
 }
 
 internal data class DescriptionViewModel(
+    val title: String,
     val startDateTime: OffsetDateTime,
     val endDateTime: OffsetDateTime,
     val coworkerPositions: List<CoworkerPositionViewModel>

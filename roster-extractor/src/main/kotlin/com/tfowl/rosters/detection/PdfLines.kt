@@ -4,7 +4,7 @@ import com.tfowl.rosters.*
 import com.tfowl.rosters.graphs.*
 import com.tfowl.rosters.pdf.*
 import org.apache.pdfbox.pdmodel.PDPage
-import org.joml.AABBd
+import org.joml.primitives.AABBd
 import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.geom.GeneralPath

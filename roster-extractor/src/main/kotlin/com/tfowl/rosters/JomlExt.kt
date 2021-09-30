@@ -2,7 +2,7 @@
 
 package com.tfowl.rosters
 
-import org.joml.AABBd
+import org.joml.primitives.AABBd
 import org.joml.Matrix3x2f
 import org.joml.Vector2fc
 import java.awt.Color

@@ -23,24 +23,26 @@ import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import com.google.api.services.calendar.model.Event as GoogleEvent
 
 private const val WOOLIES = "6773940"
 private const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
 private const val TIME_OFF_SUMMARY = "Time Off"
+private const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
+private const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 private const val DEFAULT_DESCRIPTION_TEMPLATE = "event-description.hbs"
-private const val DEFAULT_ICAL_SUFFIX = "@workjam.tfowl.com"
 private const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 
+private const val DEFAULT_ICAL_SUFFIX = "@workjam.tfowl.com"
 private val Event.iCalUID get() = "$id$DEFAULT_ICAL_SUFFIX"
-
-private fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
 private fun shiftSummary(
     start: LocalTime,
     end: LocalTime,
     default: String?,
 ): String {
+    fun String.removeWorkjamPositionPrefix(): String = removePrefix("*SUP-").removePrefix("SUP-")
 
     /* Trucks */
     when (start) {
@@ -88,8 +90,8 @@ private suspend fun createViewModel(
 
 private fun Event.toGoogleEvent(
     description: String,
-    zoneId: ZoneId = ZoneId.systemDefault()
-): com.google.api.services.calendar.model.Event {
+    zoneId: ZoneId
+): GoogleEvent {
     val start = startDateTime.toLocalDateTime(zoneId)
     val end = endDateTime.toLocalDateTime(zoneId)
 
@@ -98,7 +100,7 @@ private fun Event.toGoogleEvent(
         EventType.AVAILABILITY_TIME_OFF -> TIME_OFF_SUMMARY
     }
 
-    return com.google.api.services.calendar.model.Event()
+    return GoogleEvent()
         .setStart(startDateTime.toGoogleEventDateTime())
         .setEnd(endDateTime.toGoogleEventDateTime())
         .setSummary(summary)
@@ -109,9 +111,10 @@ private fun Event.toGoogleEvent(
 private suspend fun retrieveWorkjamShifts(
     workjam: WorkjamClient,
     employeeDataStorage: DataStorage<Employee>,
+    calendarZoneId: ZoneId,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime
-): List<com.google.api.services.calendar.model.Event> {
+): List<GoogleEvent> {
 
     val workjamShifts = workjam.events(
         WOOLIES, workjam.userId,
@@ -129,7 +132,7 @@ private suspend fun retrieveWorkjamShifts(
         val vm = createViewModel(workjam, shift, coworkingPositions, employeeDataStorage)
         val description = descriptionGenerator.generate(vm)
 
-        shift.toGoogleEvent(description, ZoneId.of("Australia/Sydney"))
+        shift.toGoogleEvent(description, calendarZoneId)
     }
 }
 
@@ -138,7 +141,7 @@ private fun syncShiftsToGoogleCalendar(
     calendarId: String,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime,
-    shifts: List<com.google.api.services.calendar.model.Event>
+    shifts: List<GoogleEvent>
 ) {
     val timetable = calendar.calendarView(calendarId)
 
@@ -162,8 +165,8 @@ private fun syncShiftsToGoogleCalendar(
 }
 
 private fun createGoogleSyncActions(
-    currents: List<com.google.api.services.calendar.model.Event>,
-    targets: List<com.google.api.services.calendar.model.Event>
+    currents: List<GoogleEvent>,
+    targets: List<GoogleEvent>
 ): List<SyncAction> {
     val create = targets.filter { shift -> currents.none { it.iCalUID == shift.iCalUID } }
         .map { SyncAction.Create(it) }
@@ -231,7 +234,7 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
         }
 
     private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
-        firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }?.value
+        firstOrNull { it.domain == WORKJAM_TOKEN_COOKIE_DOMAIN && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
@@ -250,8 +253,11 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
             )
         )
 
+        val calendarZoneId = googleCalendar.calendars().get(googleCalendarId).execute()
+            .timeZone?.let { ZoneId.of(it) } ?: ZoneId.systemDefault()
+
         val workjamShifts =
-            retrieveWorkjamShifts(workjam, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
+            retrieveWorkjamShifts(workjam, employeeDataStorage, calendarZoneId, syncPeriodStart, syncPeriodEnd)
 
         syncShiftsToGoogleCalendar(googleCalendar, googleCalendarId, syncPeriodStart, syncPeriodEnd, workjamShifts)
     }

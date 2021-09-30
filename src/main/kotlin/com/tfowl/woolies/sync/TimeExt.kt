@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.woolies.sync
 
 import java.time.LocalDate
 import java.time.LocalDateTime

@@ -1,6 +1,6 @@
 @file:Suppress("unused")
 
-package com.tfowl.workjam
+package com.tfowl.woolies.sync
 
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.Mustache

@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.woolies.sync
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.convert

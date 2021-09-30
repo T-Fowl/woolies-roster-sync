@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.woolies.sync
 
 import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.services.calendar.model.Event

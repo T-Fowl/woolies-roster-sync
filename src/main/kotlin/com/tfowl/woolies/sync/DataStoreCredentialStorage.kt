@@ -1,4 +1,4 @@
-package com.tfowl.workjam
+package com.tfowl.woolies.sync
 
 import com.google.api.client.util.store.DataStoreFactory
 import com.tfowl.workjam.client.WorkjamCredentialStorage

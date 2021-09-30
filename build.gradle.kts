@@ -1,11 +1,15 @@
 plugins {
     kotlin("jvm") version "1.5.31"
     kotlin("plugin.serialization") version "1.5.31" apply false
+    application
 }
 
 group = "com.tfowl.woolies"
 version = "1.0-SNAPSHOT"
 
+application {
+    mainClass.set("com.tfowl.woolies.sync.MainKt")
+}
 
 allprojects {
     apply(plugin = "org.jetbrains.kotlin.jvm")

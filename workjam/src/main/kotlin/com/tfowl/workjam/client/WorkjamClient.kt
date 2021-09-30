@@ -17,7 +17,6 @@ class WorkjamClient internal constructor(
         }
     }
 
-
     suspend fun employee(company: String, employee: String): Employee =
         get { path("api", "v4", "companies", company, "employees", employee) }
 

@@ -103,14 +103,13 @@ private fun Event.toGoogleEvent(description: String, zoneId: ZoneId = ZoneId.sys
 
 private suspend fun retrieveWorkjamShifts(
     workjam: WorkjamClient,
-    employeeId: String,
     employeeDataStorage: DataStorage<Employee>,
     syncPeriodStart: OffsetDateTime,
     syncPeriodEnd: OffsetDateTime
 ): List<GEvent> {
 
     val workjamShifts = workjam.events(
-        WOOLIES, employeeId,
+        WOOLIES, workjam.userId,
         syncPeriodStart, syncPeriodEnd
     )
 
@@ -175,7 +174,6 @@ private fun createGoogleSyncActions(currents: List<GEvent>, targets: List<GEvent
 }
 
 class Sync : CliktCommand() {
-    val workjamUserId by argument(help = "Workjam User Id")
     val googleCalendarId by argument(help = "Google Calendar Calendar Id")
     val workjamTokenOverride by argument(help = "Workjam jwt token").optional()
 
@@ -201,7 +199,7 @@ class Sync : CliktCommand() {
         })
 
         val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
-            .create(workjamUserId, workjamTokenOverride)
+            .create("user", workjamTokenOverride)
 
         val googleCalendar = GoogleCalendar.create(
             GoogleApiServiceConfig(
@@ -213,7 +211,7 @@ class Sync : CliktCommand() {
         )
 
         val workjamShifts =
-            retrieveWorkjamShifts(workjam, workjamUserId, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
+            retrieveWorkjamShifts(workjam, employeeDataStorage, syncPeriodStart, syncPeriodEnd)
 
         syncShiftsToGoogleCalendar(googleCalendar, googleCalendarId, syncPeriodStart, syncPeriodEnd, workjamShifts)
     }

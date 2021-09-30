@@ -7,6 +7,7 @@ import io.ktor.http.*
 import java.time.OffsetDateTime
 
 class WorkjamClient internal constructor(
+    val userId: String,
     private val client: HttpClient,
     private val defaultUrlBuilder: () -> URLBuilder,
 ) {

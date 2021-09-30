@@ -10,6 +10,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import java.util.*
+import kotlin.system.exitProcess
 
 private const val WorkjamTokenHeader = "x-token"
 private const val ORIGIN_URL = "https://app.workjam.com"
@@ -48,24 +49,23 @@ class WorkjamProvider(
     }
 
     private suspend fun reauthenticate(
-        credentials: WorkjamCredentialStorage,
-        employeeId: String,
+        id: String,
         tokenOverride: String?
-    ): String {
-        val old = tokenOverride ?: credentials.retrieve(employeeId)
-        requireNotNull(old) { "No token retrievable for $employeeId" }
+    ): AuthResponse {
+        val old = tokenOverride ?: credentials.retrieve(id)
+        requireNotNull(old) { "No token retrievable for id: $id" }
 
         val response = auth(old)
-        credentials.store(employeeId, response.token)
-        return response.token
+        credentials.store(id, response.token)
+        return response
     }
 
-    suspend fun create(employee: String, tokenOverride: String? = null): WorkjamClient {
-        val token = reauthenticate(credentials, employee, tokenOverride)
+    suspend fun create(id: String, tokenOverride: String? = null): WorkjamClient {
+        val auth = reauthenticate(id, tokenOverride)
 
-        return WorkjamClient(client.config {
+        return WorkjamClient("${auth.userId}", client.config {
             install(DefaultRequest) {
-                header(WorkjamTokenHeader, token)
+                header(WorkjamTokenHeader, auth.token)
             }
         }, httpEngineProvider::defaultUrlBuilder)
     }

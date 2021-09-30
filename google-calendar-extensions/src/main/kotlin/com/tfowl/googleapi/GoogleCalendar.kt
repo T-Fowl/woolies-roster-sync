@@ -22,7 +22,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import java.io.File
 
-const val DEFAULT_TOKENS_DIR = "tokens_dir"
+const val DEFAULT_STORAGE_DIR = ".roster-sync"
 
 data class GoogleApiServiceConfig(
     val secrets: File,
@@ -30,7 +30,7 @@ data class GoogleApiServiceConfig(
     val scopes: List<String>,
     val httpTransport: HttpTransport = ApacheHttpTransport(),
     val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance(),
-    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 )
 
 object GoogleCalendar {

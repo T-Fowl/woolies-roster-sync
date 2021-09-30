@@ -3,7 +3,7 @@
 build/
 out/
 
-tokens_dir/
+.roster-sync/
 coworkers.txt
 client-secrets.json
 cookies.txt

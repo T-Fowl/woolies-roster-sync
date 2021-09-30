@@ -201,7 +201,7 @@ class Sync : CliktCommand() {
         .default(OffsetDateTime.now().plusDays(15))
 
     override fun run() = runBlocking {
-        val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
+        val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json)
 

@@ -1,11 +1,11 @@
 package com.tfowl.workjam
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.arguments.argument
-import com.github.ajalt.clikt.parameters.arguments.optional
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.types.path
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
@@ -174,8 +174,17 @@ private fun createGoogleSyncActions(currents: List<GEvent>, targets: List<GEvent
 }
 
 class Sync : CliktCommand() {
-    val googleCalendarId by argument(help = "Google Calendar Calendar Id")
-    val workjamTokenOverride by argument(help = "Workjam jwt token").optional()
+    val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
+        .required()
+
+    val cookies by option(
+        "--cookies",
+        help = "Cookies file, in netscape format. Only needed when first run or after the currently stored token has expired"
+    )
+        .path(mustExist = true, canBeDir = false, mustBeReadable = true)
+        .convert { it.readCookies() }
+
+    val token by option("--token", help = "Workjam jwt")
 
     val syncPeriodStart by option(help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format")
         .convert("OFFSET_DATE_TIME") {
@@ -194,9 +203,11 @@ class Sync : CliktCommand() {
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_TOKENS_DIR))
 
-        val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json {
-            ignoreUnknownKeys = true
-        })
+        val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json)
+
+        val workjamTokenOverride =
+            token ?: cookies?.firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }
+                ?.value
 
         val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
             .create("user", workjamTokenOverride)

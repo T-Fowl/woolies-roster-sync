@@ -1,10 +1,11 @@
 package com.tfowl.woolies.sync
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.options.convert
-import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.output.CliktHelpFormatter
+import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
+import com.github.ajalt.clikt.parameters.groups.single
+import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.ajalt.clikt.parameters.types.path
 import com.google.api.client.util.store.DataStoreFactory
@@ -179,7 +180,24 @@ private fun createGoogleSyncActions(
     return create + update + delete
 }
 
-class SyncCommand : CliktCommand() {
+private fun List<Cookie>.findTokenOrNull(): String? =
+    firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }?.value
+
+private fun RawOption.offsetDateTime(): NullableOption<OffsetDateTime, OffsetDateTime> = convert("OFFSET_DATE_TIME") {
+    it.toOffsetDateTimeOrNull()
+        ?: fail("A date in the ISO_OFFSET_DATE_TIME format is required")
+}
+
+class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
+    init {
+        context {
+            helpFormatter = CliktHelpFormatter(
+                showDefaultValues = true,
+                showRequiredTag = true,
+            )
+        }
+    }
+
     val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
         .required()
 
@@ -187,37 +205,36 @@ class SyncCommand : CliktCommand() {
         .file(mustBeReadable = true, canBeDir = false)
         .default(File(DEFAULT_CLIENT_SECRETS_FILE))
 
-    val cookies by option(
-        "--cookies",
-        help = "Cookies file, in netscape format. Only needed when first run or after the currently stored token has expired"
+    val workjamTokenOverride by mutuallyExclusiveOptions(
+        option(
+            "--cookies",
+            help = "Cookies file in netscape format. Only needed on first run or when stored tokens have expired"
+        )
+            .path(mustExist = true, canBeDir = false, mustBeReadable = true)
+            .convert("FILE") {
+                it.readCookies().findTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
+            },
+        option("--token", help = "Workjam jwt")
+    ).single()
+
+    val syncPeriodStart by option(
+        help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME format",
+        helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     )
-        .path(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .convert { it.readCookies() }
+        .offsetDateTime()
+        .default(OffsetDateTime.now(), defaultForHelp = "now")
 
-    val token by option("--token", help = "Workjam jwt")
-
-    val syncPeriodStart by option(help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format")
-        .convert("OFFSET_DATE_TIME") {
-            it.toOffsetDateTimeOrNull()
-                ?: fail("A date in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format is required")
-        }
-        .default(OffsetDateTime.now())
-
-    val syncPeriodEnd by option(help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format")
-        .convert("OFFSET_DATE_TIME") {
-            it.toOffsetDateTimeOrNull()
-                ?: fail("A date in the ISO_OFFSET_DATE_TIME (e.g. 2007-12-03T10:15:30+01:00) format is required")
-        }
-        .default(OffsetDateTime.now().plusDays(15))
+    val syncPeriodEnd by option(
+        help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
+        helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
+    )
+        .offsetDateTime()
+        .default(OffsetDateTime.now().plusDays(15), defaultForHelp = "15 days from now")
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val employeeDataStorage = dsf.getDataStorage<Employee>(EMPLOYEE_DATASTORE_ID, Json)
-
-        val workjamTokenOverride =
-            token ?: cookies?.firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }
-                ?.value
 
         val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
             .create("user", workjamTokenOverride)

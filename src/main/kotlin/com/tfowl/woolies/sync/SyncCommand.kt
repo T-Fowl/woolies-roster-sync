@@ -22,6 +22,7 @@ import java.io.File
 import java.time.LocalTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private const val WOOLIES = "6773940"
 private const val APPLICATION_NAME = "APPLICATION_NAME"
@@ -180,14 +181,6 @@ private fun createGoogleSyncActions(
     return create + update + delete
 }
 
-private fun List<Cookie>.findTokenOrNull(): String? =
-    firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }?.value
-
-private fun RawOption.offsetDateTime(): NullableOption<OffsetDateTime, OffsetDateTime> = convert("OFFSET_DATE_TIME") {
-    it.toOffsetDateTimeOrNull()
-        ?: fail("A date in the ISO_OFFSET_DATE_TIME format is required")
-}
-
 class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
     init {
         context {
@@ -212,7 +205,7 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
         )
             .path(mustExist = true, canBeDir = false, mustBeReadable = true)
             .convert("FILE") {
-                it.readCookies().findTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
+                it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
             },
         option("--token", help = "Workjam jwt")
     ).single()
@@ -230,6 +223,15 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
     )
         .offsetDateTime()
         .default(OffsetDateTime.now().plusDays(15), defaultForHelp = "15 days from now")
+
+    private fun RawOption.offsetDateTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME): NullableOption<OffsetDateTime, OffsetDateTime> =
+        convert("OFFSET_DATE_TIME") {
+            it.toOffsetDateTimeOrNull(formatter)
+                ?: fail("A date in the $formatter format is required")
+        }
+
+    private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
+        firstOrNull { it.domain == "app.workjam.com" && it.name == "token" }?.value
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))

@@ -32,6 +32,15 @@ private const val DEFAULT_DESCRIPTION_TEMPLATE = "event-description.hbs"
 private const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 private const val ICAL_SUFFIX = "@workjam.tfowl.com"
 
+private fun RawOption.offsetDateTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME): NullableOption<OffsetDateTime, OffsetDateTime> =
+    convert("OFFSET_DATE_TIME") {
+        it.toOffsetDateTimeOrNull(formatter)
+            ?: fail("A date in the $formatter format is required")
+    }
+
+private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
+    firstOrNull { it.domain == WORKJAM_TOKEN_COOKIE_DOMAIN && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value
+
 class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
     init {
         context {
@@ -42,47 +51,39 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
         }
     }
 
-    val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
+    private val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
         .required()
 
-    val googleClientSecrets by option("--secrets", help = "Google calendar api secrets file")
+    private val googleClientSecrets by option("--secrets", help = "Google calendar api secrets file")
         .file(mustBeReadable = true, canBeDir = false)
         .default(File(DEFAULT_CLIENT_SECRETS_FILE))
 
-    val workjamTokenOverride by mutuallyExclusiveOptions(
-        option(
-            "--cookies",
-            help = "Cookies file in netscape format. Only needed on first run or when stored tokens have expired"
-        )
-            .path(mustExist = true, canBeDir = false, mustBeReadable = true)
-            .convert("FILE") {
-                it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
-            },
-        option("--token", help = "Workjam jwt")
-    ).single()
+    private val tokenFromCookies = option(
+        "--cookies",
+        help = "Cookies file in netscape format. Only needed on first run or when stored tokens have expired"
+    )
+        .path(mustExist = true, canBeDir = false, mustBeReadable = true)
+        .convert("FILE") {
+            it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
+        }
 
-    val syncPeriodStart by option(
+    private val tokenFromArgs = option("--token", help = "Workjam jwt")
+
+    private val workjamTokenOverride by mutuallyExclusiveOptions(tokenFromCookies, tokenFromArgs).single()
+
+    private val syncPeriodStart by option(
         help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     )
         .offsetDateTime()
         .default(OffsetDateTime.now(), defaultForHelp = "now")
 
-    val syncPeriodEnd by option(
+    private val syncPeriodEnd by option(
         help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     )
         .offsetDateTime()
         .default(OffsetDateTime.now().plusDays(15), defaultForHelp = "15 days from now")
-
-    private fun RawOption.offsetDateTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME): NullableOption<OffsetDateTime, OffsetDateTime> =
-        convert("OFFSET_DATE_TIME") {
-            it.toOffsetDateTimeOrNull(formatter)
-                ?: fail("A date in the $formatter format is required")
-        }
-
-    private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
-        firstOrNull { it.domain == WORKJAM_TOKEN_COOKIE_DOMAIN && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))

@@ -18,11 +18,26 @@ class WorkjamClient internal constructor(
         }
     }
 
-    suspend fun employee(company: String, employee: String): Employee =
-        get { path("api", "v4", "companies", company, "employees", employee) }
+    suspend fun employees(company: String): List<Employee> = get {
+        path("api", "v4", "companies", company, "employees")
+    }
 
-    suspend fun workingStatus(company: String, employee: String): WorkingStatus =
-        get { path("api", "v4", "companies", company, "employees", employee, "working_status") }
+    suspend fun employee(company: String, employee: String): Employee = get {
+        path("api", "v4", "companies", company, "employees", employee)
+    }
+
+    suspend fun employers(employee: String): Employers = get {
+        path("api", "v1", "users", employee, "employers")
+    }
+
+    suspend fun employees(company: String, ids: List<String>): List<Employee> = get {
+        path("api", "v4", "companies", company, "employees")
+        parameters.appendAll("employeeIds", ids)
+    }
+
+    suspend fun workingStatus(company: String, employee: String): WorkingStatus = get {
+        path("api", "v4", "companies", company, "employees", employee, "working_status")
+    }
 
     suspend fun events(
         company: String,
@@ -30,33 +45,22 @@ class WorkjamClient internal constructor(
         startDateTime: OffsetDateTime,
         endDateTime: OffsetDateTime,
         includeOverlaps: Boolean = true,
-    ): List<Event> =
-        get {
-            path("api", "v4", "companies", company, "employees", employee, "events")
-            parameters.append("startDateTime", startDateTime.toString())
-            parameters.append("endDateTime", endDateTime.toString())
-            parameters.append("includeOverlaps", includeOverlaps.toString())
-        }
+    ): List<Event> = get {
+        path("api", "v4", "companies", company, "employees", employee, "events")
+        parameters.append("startDateTime", startDateTime.toString())
+        parameters.append("endDateTime", endDateTime.toString())
+        parameters.append("includeOverlaps", includeOverlaps.toString())
+    }
 
     suspend fun coworkers(
         company: String,
         location: String,
         shift: String,
-    ): List<PositionedCoworkers> =
-        get { path("api", "v4", "companies", company, "locations", location, "shifts", shift, "coworkers") }
+    ): Coworkers = get {
+        path("api", "v4", "companies", company, "locations", location, "shifts", shift, "coworkers")
+    }
 
-    suspend fun employers(employee: String): Employers =
-        get { path("api", "v1", "users", employee, "employers") }
-
-    suspend fun employees(company: String): List<Employee> =
-        get { path("api", "v4", "companies", company, "employees") }
-
-    suspend fun employees(company: String, ids: List<String>): List<Employee> =
-        get {
-            path("api", "v4", "companies", company, "employees")
-            parameters.appendAll("employeeIds", ids)
-        }
-
-    suspend fun shift(company: String, shift: String): Shift =
-        get { path("api", "v5", "companies", company, "shifts", shift) }
+    suspend fun shift(company: String, location: String, shift: String): Shift = get {
+        path("api", "v4", "companies", company, "locations", location, "shifts", shift)
+    }
 }

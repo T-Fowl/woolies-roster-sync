@@ -26,10 +26,10 @@ internal class EventTransformer(
         workjam: WorkjamClient,
         shift: Event,
         title: String,
-        coworkingPositions: List<PositionedCoworkers>,
+        coworkingPositions: List<Coworker>,
         employeeDataStore: DataStorage<Employee>
     ): DescriptionViewModel {
-        suspend fun Coworker.toViewModel(): CoworkerViewModel {
+        suspend fun Employee.toViewModel(): CoworkerViewModel {
             val employeeDetails = employeeDataStore.computeIfAbsent(id) { id ->
                 workjam.employee(company, id)
             }
@@ -41,7 +41,7 @@ internal class EventTransformer(
             return CoworkerViewModel(firstName, lastName, employeeNumber, avatarUrl)
         }
 
-        val coworkerPositionsViewModels = coworkingPositions.map { (coworkers, position) ->
+        val coworkerPositionsViewModels = coworkingPositions.map { (position, coworkers) ->
             CoworkerPositionViewModel(
                 position = position.externalCode,
                 coworkers = coworkers.map { it.toViewModel() }.sortedBy { it.firstName }

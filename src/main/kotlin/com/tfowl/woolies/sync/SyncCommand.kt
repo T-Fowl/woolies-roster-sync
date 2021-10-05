@@ -101,8 +101,11 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
         )
 
         val iCalManager = ICalManager(suffix = ICAL_SUFFIX)
-        val calendarZoneId = googleCalendar.calendars().get(googleCalendarId).execute()
-            .timeZone?.let { ZoneId.of(it) } ?: ZoneId.systemDefault()
+
+        val calendarZoneId =
+            googleCalendar.calendars().get(googleCalendarId).execute().timeZone?.toZoneIdOrNull()
+                ?: googleCalendar.settings().get("timezone").execute().value.toZoneIdOrNull()
+                ?: ZoneId.systemDefault()
 
         val transformer = EventTransformer(
             workjam,

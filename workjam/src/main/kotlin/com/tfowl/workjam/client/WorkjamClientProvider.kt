@@ -10,14 +10,13 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import java.util.*
-import kotlin.system.exitProcess
 
 private const val WorkjamTokenHeader = "x-token"
 private const val ORIGIN_URL = "https://app.workjam.com"
 private const val REFERRER_URL = "https://app.workjam.com/"
 private val ACCEPTED_LANGUAGE = Locale.ENGLISH
 
-class WorkjamProvider(
+class WorkjamClientProvider(
     private val credentials: WorkjamCredentialStorage,
     private val httpEngineProvider: HttpEngineProvider = DefaultHttpEngineProvider(),
 ) {
@@ -60,7 +59,7 @@ class WorkjamProvider(
         return response
     }
 
-    suspend fun create(id: String, tokenOverride: String? = null): WorkjamClient {
+    suspend fun createClient(id: String, tokenOverride: String? = null): WorkjamClient {
         val auth = reauthenticate(id, tokenOverride)
 
         return WorkjamClient("${auth.userId}", client.config {
@@ -74,8 +73,8 @@ class WorkjamProvider(
         fun create(
             credentialsStorage: WorkjamCredentialStorage,
             httpEngineProvider: HttpEngineProvider = DefaultHttpEngineProvider()
-        ): WorkjamProvider {
-            return WorkjamProvider(credentialsStorage, httpEngineProvider)
+        ): WorkjamClientProvider {
+            return WorkjamClientProvider(credentialsStorage, httpEngineProvider)
         }
     }
 }

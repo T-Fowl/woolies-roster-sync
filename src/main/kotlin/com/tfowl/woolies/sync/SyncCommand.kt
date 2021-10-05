@@ -15,7 +15,7 @@ import com.tfowl.googleapi.DEFAULT_STORAGE_DIR
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
 import com.tfowl.googleapi.getDataStorage
-import com.tfowl.workjam.client.WorkjamProvider
+import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -88,8 +88,8 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
-        val workjam = WorkjamProvider.create(DataStoreCredentialStorage(dsf))
-            .create("user", workjamTokenOverride)
+        val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
+            .createClient("user", workjamTokenOverride)
 
         val googleCalendar = GoogleCalendar.create(
             GoogleApiServiceConfig(

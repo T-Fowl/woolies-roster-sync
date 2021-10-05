@@ -30,8 +30,10 @@ data class WorkjamJwtPayload(
     @SerialName("iss") val issuer: String,
     @SerialName("exp") val expires: Instant,
     @SerialName("iat") val issuedAt: Instant,
+    @SerialName("isWJAdmin") val isWorkjamAdmin: Boolean,
+    val datacenterId: String,
     val firstName: String,
     val lastName: String,
-    val avatarUrl: String,
-    val isXToken: Boolean
+    val isXToken: Boolean,
+    val avatarUrl: String? = null,
 )

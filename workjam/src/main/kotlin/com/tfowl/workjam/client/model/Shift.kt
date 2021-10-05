@@ -87,13 +87,18 @@ data class ShiftPosition(
 
 @Serializable
 data class Segment(
-    val type: String,
+    val type: SegmentType,
     val startDateTime: String,
     val endDateTime: String,
     val position: SegmentPosition,
     val location: SegmentLocation,
     val badgeTargetAudiences: JsonArray
 )
+
+enum class SegmentType {
+    SHIFT,
+    AVAILABILITY_TIME_OFF,
+}
 
 @Serializable
 data class SegmentLocation(

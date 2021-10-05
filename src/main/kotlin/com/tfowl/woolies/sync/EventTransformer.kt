@@ -5,9 +5,6 @@ import com.tfowl.googleapi.computeIfAbsent
 import com.tfowl.googleapi.toGoogleEventDateTime
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import java.time.LocalTime
 import java.time.ZoneId
 import com.google.api.services.calendar.model.Event as GoogleEvent
@@ -79,24 +76,37 @@ internal class EventTransformer(
         val start = event.startDateTime.toLocalDateTime(calendarZoneId)
         val end = event.endDateTime.toLocalDateTime(calendarZoneId)
 
-        val summary = when (event.type) {
-            EventType.SHIFT                 -> shiftSummary(start.toLocalTime(), end.toLocalTime(), event.title)
-            EventType.AVAILABILITY_TIME_OFF -> TIME_OFF_SUMMARY
+        // TODO: Duplicated logic because each branch will evolve in different directions
+        when (event.type) {
+            EventType.SHIFT                 -> {
+                // TODO: Use Shift instead of Event to support multiple segments
+
+                val shift = workjamClient.shift(company, event.location.id, event.id)
+                val coworkers = workjamClient.coworkers(company, event.location.id, event.id)
+
+                val summary = shiftSummary(start.toLocalTime(), end.toLocalTime(), event.title)
+                val vm = createViewModel(workjamClient, event, summary, coworkers, employeeDataStore)
+                val description = descriptionGenerator.generate(vm)
+
+                return GoogleEvent()
+                    .setStart(event.startDateTime.toGoogleEventDateTime())
+                    .setEnd(event.endDateTime.toGoogleEventDateTime())
+                    .setSummary(summary)
+                    .setICalUID(iCalManager.generate(event))
+                    .setDescription(description)
+            }
+            EventType.AVAILABILITY_TIME_OFF -> {
+                val summary = TIME_OFF_SUMMARY
+                val vm = createViewModel(workjamClient, event, summary, emptyList(), employeeDataStore)
+                val description = descriptionGenerator.generate(vm)
+
+                return GoogleEvent()
+                    .setStart(event.startDateTime.toGoogleEventDateTime())
+                    .setEnd(event.endDateTime.toGoogleEventDateTime())
+                    .setSummary(summary)
+                    .setICalUID(iCalManager.generate(event))
+                    .setDescription(description)
+            }
         }
-
-        val coworkingPositions = when (event.type) {
-            EventType.SHIFT                 -> workjamClient.coworkers(company, event.location.id, event.id)
-            EventType.AVAILABILITY_TIME_OFF -> emptyList()
-        }
-
-        val vm = createViewModel(workjamClient, event, summary, coworkingPositions, employeeDataStore)
-        val description = descriptionGenerator.generate(vm)
-
-        return GoogleEvent()
-            .setStart(event.startDateTime.toGoogleEventDateTime())
-            .setEnd(event.endDateTime.toGoogleEventDateTime())
-            .setSummary(summary)
-            .setICalUID(iCalManager.generate(event))
-            .setDescription(description)
     }
 }

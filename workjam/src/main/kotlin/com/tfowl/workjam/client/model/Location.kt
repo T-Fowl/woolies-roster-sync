@@ -7,6 +7,7 @@ package com.tfowl.workjam.client.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import java.time.ZoneId
 
 @Serializable
 data class Location(
@@ -20,7 +21,8 @@ data class Location(
     val externalCode: String,
 
     @SerialName("timeZoneId")
-    val timeZoneID: String,
+    @Serializable(with = ZoneIdSerialiser::class)
+    val timeZoneID: ZoneId,
 
     val address: Address? = null,
     val geolocation: Geolocation? = null,

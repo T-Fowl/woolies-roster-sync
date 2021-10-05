@@ -8,6 +8,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import java.time.Instant
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 class OffsetDateTimeSerialiser : KSerializer<OffsetDateTime> {
@@ -30,4 +31,12 @@ object InstantEpochSecondsSerialiser : KSerializer<Instant> {
     override fun deserialize(decoder: Decoder): Instant = Instant.ofEpochSecond(decoder.decodeLong())
 
     override fun serialize(encoder: Encoder, value: Instant) = encoder.encodeLong(value.epochSecond)
+}
+
+object ZoneIdSerialiser : KSerializer<ZoneId> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ZoneId", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): ZoneId = ZoneId.of(decoder.decodeString())
+
+    override fun serialize(encoder: Encoder, value: ZoneId) = encoder.encodeString(value.id)
 }

@@ -8,6 +8,7 @@ package com.tfowl.workjam.client.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
+import java.time.ZoneId
 
 @Serializable
 data class Shift(
@@ -101,7 +102,8 @@ data class SegmentLocation(
     val type: String,
 
     @SerialName("timeZoneId")
-    val timeZoneID: String
+    @Serializable(with = ZoneIdSerialiser::class)
+    val timeZoneID: ZoneId
 )
 
 @Serializable

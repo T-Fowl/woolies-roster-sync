@@ -9,6 +9,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import java.time.ZoneId
 
 @Serializable
 data class Employers(
@@ -69,7 +70,8 @@ data class City(
     val abbr: String,
 
     @SerialName("timeZoneId")
-    val timeZoneID: String? = null
+    @Serializable(with = ZoneIdSerialiser::class)
+    val timeZoneID: ZoneId? = null
 )
 
 @Serializable

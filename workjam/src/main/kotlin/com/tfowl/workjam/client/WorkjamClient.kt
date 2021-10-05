@@ -63,4 +63,8 @@ class WorkjamClient internal constructor(
     suspend fun shift(company: String, location: String, shift: String): Shift = get {
         path("api", "v4", "companies", company, "locations", location, "shifts", shift)
     }
+
+    suspend fun availability(company: String, employee: String, event: String): Availability = get {
+        path("api", "v4", "companies", company, "employees", employee, "availabilities", event)
+    }
 }

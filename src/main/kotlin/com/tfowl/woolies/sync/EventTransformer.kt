@@ -94,16 +94,11 @@ internal class EventTransformer(
     private suspend fun transformTimeOff(availability: Availability): GoogleEvent {
         val event = availability.event
 
-        val summary = TIME_OFF_SUMMARY
-        val vm = createViewModel(workjamClient, event, summary, emptyList(), employeeDataStore)
-        val description = descriptionGenerator.generate(vm)
-
         return GoogleEvent()
             .setStart(event.startDateTime.toGoogleEventDateTime())
             .setEnd(event.endDateTime.toGoogleEventDateTime())
-            .setSummary(summary)
+            .setSummary(TIME_OFF_SUMMARY)
             .setICalUID(iCalManager.generate(event))
-            .setDescription(description)
     }
 
     suspend fun transform(event: Event): GoogleEvent = when (event.type) {

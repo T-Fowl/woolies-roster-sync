@@ -1,7 +1,7 @@
 package com.tfowl.workjam.client
 
 import com.tfowl.workjam.client.model.AuthResponse
-import com.tfowl.workjam.client.model.InstantSerializer
+import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
 import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.features.json.JsonFeature
@@ -37,7 +37,7 @@ class WorkjamClientProvider(
             serializer = KotlinxSerializer(Json {
                 ignoreUnknownKeys = true
                 serializersModule = SerializersModule {
-                    contextual(InstantSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
+                    contextual(InstantSerialiser(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
                 }
             })
         }

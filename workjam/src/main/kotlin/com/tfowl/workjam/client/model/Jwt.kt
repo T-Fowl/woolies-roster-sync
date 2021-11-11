@@ -2,6 +2,7 @@
 
 package com.tfowl.workjam.client.model
 
+import com.tfowl.workjam.client.model.serialisers.InstantEpochSecondsSerialiser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.UseSerializers

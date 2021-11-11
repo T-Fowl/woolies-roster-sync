@@ -5,6 +5,7 @@
 
 package com.tfowl.workjam.client.model
 
+import com.tfowl.workjam.client.model.serialisers.ZoneIdSerialiser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.ZoneId

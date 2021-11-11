@@ -1,6 +1,7 @@
 package com.tfowl.workjam.client
 
 import com.tfowl.workjam.client.model.AuthResponse
+import com.tfowl.workjam.client.model.InstantSerializer
 import io.ktor.client.*
 import io.ktor.client.features.*
 import io.ktor.client.features.json.JsonFeature
@@ -9,6 +10,9 @@ import io.ktor.client.features.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
+import java.time.format.DateTimeFormatter
 import java.util.*
 
 private const val WorkjamTokenHeader = "x-token"
@@ -32,6 +36,9 @@ class WorkjamClientProvider(
         install(JsonFeature) {
             serializer = KotlinxSerializer(Json {
                 ignoreUnknownKeys = true
+                serializersModule = SerializersModule {
+                    contextual(InstantSerializer(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
+                }
             })
         }
         install(Logging) {

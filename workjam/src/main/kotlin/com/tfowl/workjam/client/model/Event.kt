@@ -5,9 +5,10 @@
 
 package com.tfowl.workjam.client.model
 
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import java.time.OffsetDateTime
+import java.time.Instant
 
 typealias Events = List<Event>
 
@@ -15,10 +16,10 @@ typealias Events = List<Event>
 data class Event(
     val id: String,
     val type: EventType,
-    @Serializable(with = OffsetDateTimeSerialiser::class)
-    val startDateTime: OffsetDateTime,
-    @Serializable(with = OffsetDateTimeSerialiser::class)
-    val endDateTime: OffsetDateTime,
+    @Contextual
+    val startDateTime: Instant,
+    @Contextual
+    val endDateTime: Instant,
     val location: Location,
     val title: String? = null,
     val note: JsonObject? = null,

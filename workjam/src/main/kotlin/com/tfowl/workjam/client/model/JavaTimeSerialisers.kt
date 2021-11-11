@@ -11,20 +11,6 @@ import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class OffsetDateTimeSerialiser : KSerializer<OffsetDateTime> {
-    private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-
-    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("OffsetDateTime", PrimitiveKind.STRING)
-
-    override fun deserialize(decoder: Decoder): OffsetDateTime {
-        return OffsetDateTime.parse(decoder.decodeString(), formatter)
-    }
-
-    override fun serialize(encoder: Encoder, value: OffsetDateTime) {
-        encoder.encodeString(value.format(formatter))
-    }
-}
-
 class InstantSerializer(private val formatter: DateTimeFormatter) : KSerializer<Instant> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Instant", PrimitiveKind.STRING)
 

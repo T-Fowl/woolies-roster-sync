@@ -25,6 +25,18 @@ class OffsetDateTimeSerialiser : KSerializer<OffsetDateTime> {
     }
 }
 
+class InstantSerializer(private val formatter: DateTimeFormatter) : KSerializer<Instant> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Instant", PrimitiveKind.STRING)
+
+    override fun deserialize(decoder: Decoder): Instant {
+        return formatter.parse(decoder.decodeString(), Instant::from)
+    }
+
+    override fun serialize(encoder: Encoder, value: Instant) {
+        encoder.encodeString(formatter.format(value))
+    }
+}
+
 object InstantEpochSecondsSerialiser : KSerializer<Instant> {
     override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("Instant", PrimitiveKind.LONG)
 

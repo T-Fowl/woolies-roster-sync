@@ -1,10 +1,9 @@
 package com.tfowl.woolies.sync
 
-import com.tfowl.googleapi.DataStorage
-import com.tfowl.googleapi.computeIfAbsent
-import com.tfowl.googleapi.toGoogleEventDateTime
+import com.tfowl.googleapi.*
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 import com.google.api.services.calendar.model.Event as GoogleEvent
@@ -74,8 +73,8 @@ internal class EventTransformer(
 
     private suspend fun transformShift(shift: Shift): GoogleEvent {
         val event = shift.event
-        val start = event.startDateTime.toLocalDateTime(calendarZoneId)
-        val end = event.endDateTime.toLocalDateTime(calendarZoneId)
+        val start = LocalDateTime.ofInstant(event.startDateTime, calendarZoneId)
+        val end = LocalDateTime.ofInstant(event.endDateTime, calendarZoneId)
 
         val coworkers = workjamClient.coworkers(company, event.location.id, event.id)
 
@@ -84,8 +83,8 @@ internal class EventTransformer(
         val description = descriptionGenerator.generate(vm)
 
         return GoogleEvent()
-            .setStart(event.startDateTime.toGoogleEventDateTime())
-            .setEnd(event.endDateTime.toGoogleEventDateTime())
+            .setStart(event.startDateTime, calendarZoneId)
+            .setEnd(event.endDateTime, calendarZoneId)
             .setSummary(summary)
             .setICalUID(iCalManager.generate(event))
             .setDescription(description)

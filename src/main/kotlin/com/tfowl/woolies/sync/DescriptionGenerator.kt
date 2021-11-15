@@ -5,7 +5,7 @@ package com.tfowl.woolies.sync
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.Mustache
 import java.io.StringWriter
-import java.time.OffsetDateTime
+import java.time.Instant
 
 internal fun Mustache.execute(scope: Any): String {
     val sw = StringWriter()
@@ -15,8 +15,8 @@ internal fun Mustache.execute(scope: Any): String {
 
 internal data class DescriptionViewModel(
     val title: String,
-    val startDateTime: OffsetDateTime,
-    val endDateTime: OffsetDateTime,
+    val startDateTime: Instant,
+    val endDateTime: Instant,
     val coworkerPositions: List<CoworkerPositionViewModel>
 )
 

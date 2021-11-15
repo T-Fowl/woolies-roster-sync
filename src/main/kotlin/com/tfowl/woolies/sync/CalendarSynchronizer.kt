@@ -4,7 +4,7 @@ import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import com.tfowl.googleapi.*
-import java.time.OffsetDateTime
+import java.time.Instant
 
 sealed class SyncAction {
     abstract fun pretty(): String
@@ -62,7 +62,7 @@ class CalendarSynchronizer(
         return create + update + delete
     }
 
-    fun sync(calendarId: String, syncStart: OffsetDateTime, syncEnd: OffsetDateTime, desired: List<Event>) {
+    fun sync(calendarId: String, syncStart: Instant, syncEnd: Instant, desired: List<Event>) {
         val timetable = service.calendarView(calendarId)
 
         val events = timetable.list()

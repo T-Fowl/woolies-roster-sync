@@ -2,28 +2,34 @@ package com.tfowl.googleapi
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
-import java.time.OffsetDateTime
-import java.time.format.DateTimeFormatter
-import com.google.api.client.util.DateTime as GoogDateTime
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneId
+import com.google.api.client.util.DateTime as GoogleDateTime
 
 
 class GoogleTimeExtTests {
 
-    @Test
-    fun `OffsetDateTime to Google DateTime`() {
-        val rfc3339 = "2020-11-21T19:57:12.123+10:00"
-        val offsetDateTime = OffsetDateTime.parse(rfc3339)
-        val googleDateTime = offsetDateTime.toGoogleDateTime()
+    private val rfc3339 = "2007-12-03T10:15:30.00Z"
 
-        assertEquals(rfc3339, googleDateTime.toStringRfc3339())
+    private val clock = Clock.fixed(
+        Instant.parse(rfc3339),
+        ZoneId.systemDefault()
+    )
+
+    @Test
+    fun `Instant to Google DateTime`() {
+        val instant = clock.instant()
+        val googleDateTime = instant.toGoogleDateTime()
+
+        assertEquals(instant.toEpochMilli(), googleDateTime.value)
     }
 
     @Test
-    fun `Google DateTime to OffsetDateTime`() {
-        val rfc3339 = "2020-11-21T19:57:12.123+10:00"
-        val googleDateTime = GoogDateTime.parseRfc3339(rfc3339)
-        val offsetDateTime = googleDateTime.toOffsetDateTime()
+    fun `Google DateTime to Instant`() {
+        val googleDateTime = GoogleDateTime.parseRfc3339(rfc3339)
+        val instant = googleDateTime.toInstant()
 
-        assertEquals(rfc3339, offsetDateTime.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+        assertEquals(googleDateTime.value, instant.toEpochMilli())
     }
 }

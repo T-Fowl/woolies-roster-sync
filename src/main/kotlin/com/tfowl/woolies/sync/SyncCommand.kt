@@ -14,7 +14,8 @@ import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.DEFAULT_STORAGE_DIR
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
-import com.tfowl.woolies.sync.getDataStorage
+import com.tfowl.woolies.sync.utils.*
+import com.tfowl.woolies.sync.utils.readCookies
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json

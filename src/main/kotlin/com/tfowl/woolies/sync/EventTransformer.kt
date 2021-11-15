@@ -1,6 +1,7 @@
 package com.tfowl.woolies.sync
 
 import com.tfowl.googleapi.*
+import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import java.time.LocalDateTime

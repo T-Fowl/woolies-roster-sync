@@ -1,6 +1,6 @@
 @file:Suppress("NOTHING_TO_INLINE")
 
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.utils
 
 import java.nio.file.Path
 import java.time.Instant

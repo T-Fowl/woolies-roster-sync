@@ -1,4 +1,4 @@
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.utils
 
 import com.tfowl.workjam.client.model.Event
 import com.google.api.services.calendar.model.Event as GoogleEvent

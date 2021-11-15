@@ -4,6 +4,7 @@ import com.google.api.client.googleapis.batch.BatchRequest
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import com.tfowl.googleapi.*
+import com.tfowl.woolies.sync.utils.ICalManager
 import java.time.Instant
 
 sealed class SyncAction {

@@ -71,7 +71,7 @@ class WorkjamClientProvider(
     suspend fun createClient(ref: String, tokenOverride: String? = null): WorkjamClient {
         val auth = retrieveAuthenticatedUser(ref, tokenOverride)
 
-        return WorkjamClient(auth, client, httpEngineProvider.defaultUrlBuilder().build())
+        return DefaultWorkjamClient(auth, client, httpEngineProvider.defaultUrlBuilder().build())
     }
 
     companion object {

@@ -8,7 +8,6 @@ import io.ktor.client.features.json.JsonFeature
 import io.ktor.client.features.json.serializer.*
 import io.ktor.client.features.logging.*
 import io.ktor.client.request.*
-import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
@@ -57,20 +56,20 @@ class WorkjamClientProvider(
     }
 
     private suspend fun retrieveAuthenticatedUser(
-        id: String,
+        ref: String,
         tokenOverride: String?
     ): WorkjamUser {
-        val oldToken = requireNotNull(tokenOverride ?: credentials.retrieve(id)) {
-            "No token available for id: $id"
+        val oldToken = requireNotNull(tokenOverride ?: credentials.retrieve(ref)) {
+            "No token available for user reference id: $ref"
         }
 
         return authenticateUser(oldToken).also {
-            credentials.store(id, it.token)
+            credentials.store(ref, it.token)
         }
     }
 
-    suspend fun createClient(id: String, tokenOverride: String? = null): WorkjamClient {
-        val auth = retrieveAuthenticatedUser(id, tokenOverride)
+    suspend fun createClient(ref: String, tokenOverride: String? = null): WorkjamClient {
+        val auth = retrieveAuthenticatedUser(ref, tokenOverride)
 
         return WorkjamClient(auth, client, httpEngineProvider.defaultUrlBuilder().build())
     }

@@ -13,8 +13,6 @@ class WorkjamClient internal constructor(
 ) {
     val userId: String = user.userId.toString()
 
-    fun forUser(user: WorkjamUser): WorkjamClient = WorkjamClient(user, client, defaultUrl)
-
     private suspend inline fun <reified T> get(requestUrlBuilder: URLBuilder.() -> Unit): T {
         return client.get {
             header(WorkjamTokenHeader, user.token)

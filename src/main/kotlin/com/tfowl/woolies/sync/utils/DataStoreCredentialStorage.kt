@@ -6,11 +6,11 @@ import com.tfowl.workjam.client.WorkjamCredentialStorage
 class DataStoreCredentialStorage(factory: DataStoreFactory) : WorkjamCredentialStorage {
     private val store = factory.getDataStore<String>("WorkjamTokens")
 
-    override suspend fun retrieve(employeeId: String): String? {
-        return store[employeeId]
+    override suspend fun retrieve(id: String): String? {
+        return store[id]
     }
 
-    override suspend fun store(employeeId: String, token: String) {
-        store[employeeId] = token
+    override suspend fun store(id: String, token: String) {
+        store[id] = token
     }
 }

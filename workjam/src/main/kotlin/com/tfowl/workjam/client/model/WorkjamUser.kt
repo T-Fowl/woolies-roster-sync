@@ -3,7 +3,7 @@ package com.tfowl.workjam.client.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class AuthResponse(
+data class WorkjamUser(
     val token: String,
     val userId: Long,
     val firstLogin: Boolean,

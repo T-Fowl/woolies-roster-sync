@@ -1,6 +1,6 @@
 package com.tfowl.workjam.client
 
-import com.tfowl.workjam.client.model.AuthResponse
+import com.tfowl.workjam.client.model.WorkjamUser
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
 import io.ktor.client.*
 import io.ktor.client.features.*
@@ -8,6 +8,7 @@ import io.ktor.client.features.json.JsonFeature
 import io.ktor.client.features.json.serializer.*
 import io.ktor.client.features.logging.*
 import io.ktor.client.request.*
+import io.ktor.client.statement.*
 import io.ktor.http.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
@@ -15,7 +16,7 @@ import kotlinx.serialization.modules.contextual
 import java.time.format.DateTimeFormatter
 import java.util.*
 
-private const val WorkjamTokenHeader = "x-token"
+internal const val WorkjamTokenHeader = "x-token"
 private const val ORIGIN_URL = "https://app.workjam.com"
 private const val REFERRER_URL = "https://app.workjam.com/"
 private val ACCEPTED_LANGUAGE = Locale.ENGLISH
@@ -48,32 +49,30 @@ class WorkjamClientProvider(
         BrowserUserAgent() // Hehe sneaky
     }
 
-    private suspend fun auth(old: String): AuthResponse {
-        return client.patch(httpEngineProvider.defaultUrlBuilder().path("auth", "v3").build()) {
-            header(WorkjamTokenHeader, old)
+    private suspend fun authenticateUser(oldToken: String): WorkjamUser {
+        return client.patch(httpEngineProvider.defaultUrlBuilder().build()) {
+            url.path("auth", "v3")
+            header(WorkjamTokenHeader, oldToken)
         }
     }
 
-    private suspend fun reauthenticate(
+    private suspend fun retrieveAuthenticatedUser(
         id: String,
         tokenOverride: String?
-    ): AuthResponse {
-        val old = tokenOverride ?: credentials.retrieve(id)
-        requireNotNull(old) { "No token retrievable for id: $id" }
+    ): WorkjamUser {
+        val oldToken = requireNotNull(tokenOverride ?: credentials.retrieve(id)) {
+            "No token available for id: $id"
+        }
 
-        val response = auth(old)
-        credentials.store(id, response.token)
-        return response
+        return authenticateUser(oldToken).also {
+            credentials.store(id, it.token)
+        }
     }
 
     suspend fun createClient(id: String, tokenOverride: String? = null): WorkjamClient {
-        val auth = reauthenticate(id, tokenOverride)
+        val auth = retrieveAuthenticatedUser(id, tokenOverride)
 
-        return WorkjamClient("${auth.userId}", client.config {
-            install(DefaultRequest) {
-                header(WorkjamTokenHeader, auth.token)
-            }
-        }, httpEngineProvider::defaultUrlBuilder)
+        return WorkjamClient(auth, client, httpEngineProvider.defaultUrlBuilder().build())
     }
 
     companion object {

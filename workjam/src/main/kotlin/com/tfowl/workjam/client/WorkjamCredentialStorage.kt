@@ -1,7 +1,7 @@
 package com.tfowl.workjam.client
 
 interface WorkjamCredentialStorage {
-    suspend fun retrieve(employeeId: String): String?
+    suspend fun retrieve(id: String): String?
 
-    suspend fun store(employeeId: String, token: String)
+    suspend fun store(id: String, token: String)
 }

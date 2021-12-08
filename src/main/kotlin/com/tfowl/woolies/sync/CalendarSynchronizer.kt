@@ -1,10 +1,18 @@
 package com.tfowl.woolies.sync
 
-import com.google.api.client.googleapis.batch.BatchRequest
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
+import com.github.michaelbull.result.map
+import com.google.api.client.googleapis.json.GoogleJsonError
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import com.tfowl.googleapi.*
 import com.tfowl.woolies.sync.utils.ICalManager
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import java.time.Instant
 
 sealed class SyncAction {
@@ -23,21 +31,13 @@ sealed class SyncAction {
     }
 }
 
-fun CalendarView.queue(batch: BatchRequest, action: SyncAction) {
-    val request = when (action) {
-        is SyncAction.Create -> insert(action.item)
-        is SyncAction.Update -> update(action.original.id, action.updated)
-        is SyncAction.Delete -> delete(action.item.id)
-    }
+data class SyncResult(val action: SyncAction, val result: Result<Unit, GoogleJsonError>)
 
-    request.queue(batch,
-        success = { println("Successfully executed ${action.pretty()}") },
-        failure = { println("Failed to execute ${action.pretty()} because $it") }
-    )
+private fun SyncAction.toRequest(view: CalendarView) = when (this) {
+    is SyncAction.Create -> view.insert(item)
+    is SyncAction.Update -> view.update(original.id, updated)
+    is SyncAction.Delete -> view.delete(item.id)
 }
-
-fun CalendarView.queue(batch: BatchRequest, actions: List<SyncAction>) =
-    actions.forEach { queue(batch, it) }
 
 class CalendarSynchronizer(
     val service: Calendar,
@@ -63,10 +63,10 @@ class CalendarSynchronizer(
         return create + update + delete
     }
 
-    fun sync(calendarId: String, syncStart: Instant, syncEnd: Instant, desired: List<Event>) {
-        val timetable = service.calendarView(calendarId)
+    suspend fun sync(calendarId: String, syncStart: Instant, syncEnd: Instant, desired: List<Event>) = coroutineScope {
+        val calendar = service.calendarView(calendarId)
 
-        val events = timetable.list()
+        val events = calendar.list()
             .setMaxResults(2500)
             .setTimeMin(syncStart.toGoogleDateTime())
             .setTimeMax(syncEnd.toGoogleDateTime())
@@ -80,8 +80,22 @@ class CalendarSynchronizer(
         }
 
         val actions = createGoogleSyncActions(events, desired)
-        service.batched {
-            timetable.queue(batch, actions)
+
+        val actionResults = service.batched {
+            actions.map { action ->
+                val request = action.toRequest(calendar)
+
+                async(start = CoroutineStart.UNDISPATCHED) {
+                    SyncResult(action, request.queueSuspending().map { })
+                }
+            }
+        }.awaitAll()
+
+        actionResults.forEach { (action, result) ->
+            when (result) {
+                is Ok  -> println("Successfully completed: ${action.pretty()}")
+                is Err -> println("Failed to complete: ${action.pretty()} with error: ${result.error}")
+            }
         }
     }
 }

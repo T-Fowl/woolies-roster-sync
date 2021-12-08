@@ -1,5 +1,8 @@
 package com.tfowl.googleapi
 
+import com.github.michaelbull.result.Err
+import com.github.michaelbull.result.Ok
+import com.github.michaelbull.result.Result
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
@@ -73,47 +76,40 @@ class CalendarView(
     fun patch(id: String, content: Event) = api.events().patch(calendarId, id, content)
 }
 
-internal class GoogleJsonException(val error: GoogleJsonError) : RuntimeException()
+suspend fun <T> AbstractGoogleJsonClientRequest<T>.queueSuspending(batch: BatchRequest): Result<T, GoogleJsonError> =
+    queueAsync(batch).await()
 
-internal fun <T> AbstractGoogleJsonClientRequest<T>.queueDeferred(batch: BatchRequest): Deferred<T> {
-    val cp = CompletableDeferred<T>()
+fun <T> AbstractGoogleJsonClientRequest<T>.queueAsync(batch: BatchRequest): Deferred<Result<T, GoogleJsonError>> {
+    val cp = CompletableDeferred<Result<T, GoogleJsonError>>()
 
     queue(batch, object : JsonBatchCallback<T>() {
-        override fun onSuccess(t: T, responseHeaders: HttpHeaders) {
-            cp.complete(t)
+        override fun onSuccess(t: T, responseHeaders: HttpHeaders?) {
+            cp.complete(Ok(t))
         }
 
-        override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders) {
-            cp.completeExceptionally(GoogleJsonException(e))
+        override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders?) {
+            cp.complete(Err(e))
         }
     })
 
     return cp
 }
 
-fun <T> AbstractGoogleJsonClientRequest<T>.queue(
-    batch: BatchRequest,
-    success: (T) -> Unit = {},
-    failure: (GoogleJsonError) -> Unit = {},
-) {
-    queue(batch, object : JsonBatchCallback<T>() {
-        override fun onSuccess(t: T, responseHeaders: HttpHeaders?) {
-            success(t)
-        }
+class BatchRequestContext(private val batch: BatchRequest) {
+    fun <T> AbstractGoogleJsonClientRequest<T>.queue(callback: JsonBatchCallback<T>) =
+        queue(batch, callback)
 
-        override fun onFailure(e: GoogleJsonError, responseHeaders: HttpHeaders?) {
-            failure(e)
-        }
-    })
+    fun <T> AbstractGoogleJsonClientRequest<T>.queueAsync(): Deferred<Result<T, GoogleJsonError>> =
+        queueAsync(batch)
+
+    suspend fun <T> AbstractGoogleJsonClientRequest<T>.queueSuspending(): Result<T, GoogleJsonError> =
+        queueSuspending(batch)
 }
 
-class BatchRequestContext(
-    val batch: BatchRequest
-)
-
 inline fun <R> Calendar.batched(block: BatchRequestContext.() -> R): R {
-    val ctx = BatchRequestContext(batch())
+    val batch = batch()
+    val ctx = BatchRequestContext(batch)
     val result = ctx.block()
-    ctx.batch.execute()
+    batch.execute()
     return result
 }

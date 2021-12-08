@@ -10,6 +10,9 @@ dependencies {
     api("com.google.oauth-client:google-oauth-client-jetty:1.32.1")
     api("com.google.apis:google-api-services-calendar:v3-rev20210804-1.32.1")
 
+    api("com.michael-bull.kotlin-result:kotlin-result:1.1.13")
+    api("com.michael-bull.kotlin-result:kotlin-result-coroutines:1.1.13")
+
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")
     testImplementation("io.mockk:mockk:1.12.0")
 }

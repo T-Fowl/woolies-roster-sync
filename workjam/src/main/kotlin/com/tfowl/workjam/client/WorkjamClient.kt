@@ -25,7 +25,7 @@ interface WorkjamClient {
         startDateTime: OffsetDateTime,
         endDateTime: OffsetDateTime,
         includeOverlaps: Boolean = true,
-    ): List<Event>
+    ): List<ScheduleEvent>
 
     suspend fun coworkers(
         company: String,
@@ -80,7 +80,7 @@ class DefaultWorkjamClient internal constructor(
         startDateTime: OffsetDateTime,
         endDateTime: OffsetDateTime,
         includeOverlaps: Boolean,
-    ): List<Event> = get {
+    ): List<ScheduleEvent> = get {
         path("api", "v4", "companies", company, "employees", employee, "events")
         parameters.append("startDateTime", startDateTime.toString())
         parameters.append("endDateTime", endDateTime.toString())

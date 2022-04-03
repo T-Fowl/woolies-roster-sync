@@ -21,7 +21,7 @@ internal class EventTransformer(
 ) {
     private suspend fun createViewModel(
         workjam: WorkjamClient,
-        shift: Event,
+        shift: ScheduleEvent,
         title: String,
         coworkingPositions: List<Coworker>,
         employeeDataStore: DataStorage<Employee>
@@ -101,14 +101,15 @@ internal class EventTransformer(
             .setICalUID(iCalManager.generate(event))
     }
 
-    suspend fun transform(event: Event): GoogleEvent = when (event.type) {
-        EventType.SHIFT                 -> {
+    suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {
+        ScheduleEventType.SHIFT                 -> {
             val shift = workjamClient.shift(company, event.location.id, event.id)
             transformShift(shift)
         }
-        EventType.AVAILABILITY_TIME_OFF -> {
+        ScheduleEventType.AVAILABILITY_TIME_OFF -> {
             val availability = workjamClient.availability(company, workjamClient.userId, event.id)
             transformTimeOff(availability)
         }
+        else                                    -> null
     }
 }

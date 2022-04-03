@@ -19,7 +19,7 @@ data class Shift(
     val externalID: String,
 
     val status: String,
-    val event: Event,
+    val event: ScheduleEvent,
     val assignees: List<Assignee>,
     val position: ShiftPosition,
     val quantity: Long,
@@ -97,8 +97,10 @@ data class Segment(
 )
 
 enum class SegmentType {
-    SHIFT,
-    AVAILABILITY_TIME_OFF,
+    N_IMPORTE_QUOI,
+    BREAK_MEAL,
+    BREAK_REST,
+    SHIFT
 }
 
 @Serializable

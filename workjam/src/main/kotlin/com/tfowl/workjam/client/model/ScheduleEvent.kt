@@ -10,12 +10,10 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
 
-typealias Events = List<Event>
-
 @Serializable
-data class Event(
+data class ScheduleEvent(
     val id: String,
-    val type: EventType,
+    val type: ScheduleEventType,
     @Contextual
     val startDateTime: Instant,
     @Contextual
@@ -26,7 +24,13 @@ data class Event(
     val recurrence: JsonObject? = null
 )
 
-enum class EventType {
-    SHIFT,
+enum class ScheduleEventType {
+    N_IMPORTE_QUOI,
+    AVAILABILITY_AVAILABLE,
+    AVAILABILITY_AVAILABLE_NOT_PREFERRED,
+    AVAILABILITY_AVAILABLE_PREFERRED,
     AVAILABILITY_TIME_OFF,
+    AVAILABILITY_UNAVAILABLE,
+    AVAILABILITY_UNKNOWN,
+    SHIFT
 }

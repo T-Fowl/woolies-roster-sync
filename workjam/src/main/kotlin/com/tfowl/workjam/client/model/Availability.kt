@@ -5,7 +5,7 @@ import kotlinx.serialization.json.JsonElement
 
 @Serializable
 data class Availability(
-    val event: Event,
+    val event: ScheduleEvent,
     val id: String,
     val name: String,
     val note: JsonElement,

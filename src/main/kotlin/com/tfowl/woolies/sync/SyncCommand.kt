@@ -121,7 +121,7 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
 
         val workjamShifts = workjam.events(WOOLIES, workjam.userId, syncPeriodStart, syncPeriodEnd)
 
-        val workjamEvents = workjamShifts.map { transformer.transform(it) }
+        val workjamEvents = workjamShifts.mapNotNull { transformer.transform(it) }
 
         synchronizer.sync(googleCalendarId, syncPeriodStart.toInstant(), syncPeriodEnd.toInstant(), workjamEvents)
     }

@@ -36,10 +36,23 @@ dependencies {
 
     implementation("com.github.ajalt.clikt:clikt:3.2.0")
 
-    implementation(project(":google-calendar-extensions"))
+    implementation("com.google.api-client:google-api-client:1.32.1")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.32.1")
+    implementation("com.google.apis:google-api-services-calendar:v3-rev20210804-1.32.1")
+
+    implementation("com.michael-bull.kotlin-result:kotlin-result:1.1.13")
+    implementation("com.michael-bull.kotlin-result:kotlin-result-coroutines:1.1.13")
+
     implementation(project(":workjam"))
 
     implementation("com.github.spullara.mustache.java:compiler:0.9.10")
 
     implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.14.1")
+
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.0")
+    testImplementation("io.mockk:mockk:1.12.0")
+}
+
+tasks.withType<Test> {
+    useJUnitPlatform()
 }

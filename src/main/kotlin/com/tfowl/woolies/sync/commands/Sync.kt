@@ -11,25 +11,29 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
-import com.tfowl.woolies.sync.*
-import com.tfowl.woolies.sync.DefaultDescriptionGenerator
-import com.tfowl.woolies.sync.EventTransformer
-import com.tfowl.woolies.sync.utils.*
+import com.tfowl.woolies.sync.CalendarSynchronizer
+import com.tfowl.woolies.sync.toOffsetDateTimeOrNull
+import com.tfowl.woolies.sync.toZoneIdOrNull
+import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
+import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
+import com.tfowl.woolies.sync.transform.EventTransformer
+import com.tfowl.woolies.sync.utils.Cookie
+import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
+import com.tfowl.woolies.sync.utils.ICalManager
+import com.tfowl.woolies.sync.utils.readCookies
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.json.Json
 import java.io.File
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-private const val WOOLIES = "6773940"
+internal const val WOOLIES = "6773940"
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
-private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
-private const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
-private const val WORKJAM_TOKEN_COOKIE_NAME = "token"
+internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
+internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
-private const val ICAL_SUFFIX = "@workjam.tfowl.com"
+internal const val ICAL_SUFFIX = "@workjam.tfowl.com"
 internal const val DEFAULT_STORAGE_DIR = ".roster-sync"
 
 class Sync : CliktCommand(name = "sync") {

@@ -1,8 +1,13 @@
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.transform
 
 import com.tfowl.workjam.client.model.Shift
 import java.time.LocalTime
 
+/**
+ * /**
+ * Responsible for generating the summary/title for [com.google.api.services.calendar.model.Event]s
+*/
+ */
 interface SummaryGenerator {
     fun generate(shift: Shift): String
 }

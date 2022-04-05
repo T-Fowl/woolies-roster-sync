@@ -1,6 +1,4 @@
-@file:Suppress("unused")
-
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.transform
 
 import java.time.Instant
 
@@ -24,6 +22,9 @@ internal data class CoworkerViewModel(
     val fullName: String get() = "$firstName $lastName"
 }
 
+/**
+ * Responsible for generating the description for [com.google.api.services.calendar.model.Event]s
+ */
 internal interface DescriptionGenerator {
     fun generate(vm: ShiftViewModel): String
 }

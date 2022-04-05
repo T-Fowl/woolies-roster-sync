@@ -1,4 +1,4 @@
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.transform
 
 import com.tfowl.googleapi.setEnd
 import com.tfowl.googleapi.setStart
@@ -11,6 +11,9 @@ import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
 
+/**
+ * Responsible for transforming [ScheduleEvent]s into [GoogleEvent]s
+ */
 internal class EventTransformer(
     private val workjam: WorkjamClient,
     private val company: String,

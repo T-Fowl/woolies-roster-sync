@@ -77,7 +77,7 @@ internal class EventTransformer(
         val start = LocalDateTime.ofInstant(event.startDateTime, calendarZoneId)
         val end = LocalDateTime.ofInstant(event.endDateTime, calendarZoneId)
 
-        val coworkers = workjamClient.coworkers(company, event.location.id, event.id)
+        val coworkers = workjam.coworkers(company, event.location.id, event.id)
 
         val summary = shiftSummary(start.toLocalTime(), end.toLocalTime(), event.title)
         val vm = createViewModel(workjamClient, event, summary, coworkers, employeeDataStore)
@@ -116,4 +116,28 @@ internal class EventTransformer(
         }
         else -> null
     }
+}
+
+private fun createViewModel(
+    shift: Shift,
+    title: String,
+    storePositions: List<Coworker>,
+): ShiftViewModel {
+
+    fun Employee.toViewModel(): CoworkerViewModel {
+        val avatarUrl = avatarUrl?.replace(
+            "/image/upload",
+            "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+        )
+        return CoworkerViewModel(firstName, lastName, avatarUrl)
+    }
+
+    val storePositionViewModels = storePositions.map { (position, coworkers) ->
+        StorePositionViewModel(
+            position = position.externalCode,
+            coworkers = coworkers.map { it.toViewModel() }.sortedBy { it.firstName }
+        )
+    }.sortedBy { it.position }
+
+    return ShiftViewModel(title, shift.event.startDateTime, shift.event.endDateTime, storePositionViewModels)
 }

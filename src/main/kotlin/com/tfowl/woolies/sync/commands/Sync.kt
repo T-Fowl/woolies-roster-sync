@@ -92,7 +92,6 @@ class Sync : CliktCommand(name = "sync") {
         val transformer = EventTransformer(
             workjam,
             WOOLIES,
-            dsf.getDataStorage(EMPLOYEE_DATASTORE_ID, Json),
             calendarZoneId,
             iCalManager,
             DefaultDescriptionGenerator,

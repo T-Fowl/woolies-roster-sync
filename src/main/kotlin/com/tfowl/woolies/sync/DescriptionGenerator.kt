@@ -19,12 +19,8 @@ internal data class StorePositionViewModel(
 internal data class CoworkerViewModel(
     val firstName: String,
     val lastName: String,
-    val employeeNumber: String? = null,
     val avatarUrl: String? = null
 ) {
-    val hasEmployeeNumber: Boolean = employeeNumber != null
-    val hasAvatarUrl: Boolean = avatarUrl != null
-
     val fullName: String get() = "$firstName $lastName"
 }
 
@@ -38,10 +34,7 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
             appendLine("<b>${sp.position}</b>")
 
             sp.coworkers.forEach { cw ->
-                append("\t${cw.fullName}")
-
-                cw.employeeNumber?.let { append(" (${cw.employeeNumber})") }
-                appendLine()
+                appendLine("\t${cw.fullName}")
             }
 
             appendLine("<hr>")

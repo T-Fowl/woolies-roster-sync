@@ -3,15 +3,16 @@ package com.tfowl.woolies.sync.utils
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
 import com.tfowl.googleapi.DataStorage
-import com.tfowl.googleapi.DataStorageSerialiser
+import com.tfowl.googleapi.StringSerialiser
+import com.tfowl.googleapi.asDataStorage
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.StringFormat
 import kotlinx.serialization.serializer
 
-private class KotlinXSerializer<T>(
+private class KotlinxStringSerialiser<T>(
     private val format: StringFormat,
     private val serialiser: KSerializer<T>
-) : DataStorageSerialiser<T> {
+) : StringSerialiser<T> {
     override fun serialise(value: T): String {
         return format.encodeToString(serialiser, value)
     }
@@ -23,7 +24,7 @@ private class KotlinXSerializer<T>(
 }
 
 fun <V> DataStore<String>.asDataStorage(format: StringFormat, serialiser: KSerializer<V>): DataStorage<V> =
-    DataStorage(this, KotlinXSerializer(format, serialiser))
+    asDataStorage(KotlinxStringSerialiser(format, serialiser))
 
 inline fun <reified V> DataStore<String>.asDataStorage(format: StringFormat): DataStorage<V> =
     asDataStorage(format, serializer())

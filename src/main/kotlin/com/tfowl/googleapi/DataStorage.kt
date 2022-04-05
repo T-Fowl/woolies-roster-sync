@@ -2,14 +2,13 @@ package com.tfowl.googleapi
 
 import com.google.api.client.util.store.DataStore
 
-interface DataStorageSerialiser<T> {
-    fun serialise(value: T): String
-    fun deserialise(value: String): T
-}
-
+/**
+ * Superset of google's [DataStore] which uses custom serialisation instead
+ * of relying on [java.io.Serializable]
+ */
 class DataStorage<V>(
     private val store: DataStore<String>,
-    private val serialiser: DataStorageSerialiser<V>
+    private val serialiser: StringSerialiser<V>
 ) {
     fun get(key: String): V? = store.get(key)?.let { serialiser.deserialise(it) }
 
@@ -18,6 +17,21 @@ class DataStorage<V>(
         return this
     }
 }
+
+interface StringSerialiser<T> {
+    fun serialise(value: T): String
+    fun deserialise(value: String): T
+
+    companion object {
+        object Identity : StringSerialiser<String> {
+            override fun deserialise(value: String): String = value
+            override fun serialise(value: String): String = value
+        }
+    }
+}
+
+fun <T> DataStore<String>.asDataStorage(serialiser: StringSerialiser<T>): DataStorage<T> =
+    DataStorage(this, serialiser)
 
 suspend fun <V> DataStorage<V>.computeIfAbsent(key: String, provider: suspend (String) -> V): V {
     return get(key) ?: provider(key).also { set(key, it) }

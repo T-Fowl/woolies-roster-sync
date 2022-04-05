@@ -15,7 +15,7 @@ interface WorkjamClient {
 
     suspend fun employers(employee: String): Employers
 
-    suspend fun employees(company: String, ids: List<String>): List<Employee>
+    suspend fun employees(company: String, ids: Iterable<String>): List<Employee>
 
     suspend fun workingStatus(company: String, employee: String): WorkingStatus
 
@@ -65,9 +65,9 @@ class DefaultWorkjamClient internal constructor(
         path("api", "v1", "users", employee, "employers")
     }
 
-    override suspend fun employees(company: String, ids: List<String>): List<Employee> = get {
+    override suspend fun employees(company: String, ids: Iterable<String>): List<Employee> = get {
         path("api", "v4", "companies", company, "employees")
-        parameters.appendAll("employeeIds", ids)
+        parameters.append("employeeIds", ids.joinToString(","))
     }
 
     override suspend fun workingStatus(company: String, employee: String): WorkingStatus = get {

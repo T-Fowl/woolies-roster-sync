@@ -6,8 +6,14 @@
 package com.tfowl.workjam.client.model
 
 import com.tfowl.workjam.client.model.serialisers.ZoneIdSerialiser
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import java.time.ZoneId
 
@@ -96,11 +102,26 @@ data class Segment(
     val badgeTargetAudiences: JsonArray
 )
 
+@Serializable(with = SegmentTypeSerializer::class)
 enum class SegmentType {
     N_IMPORTE_QUOI,
     BREAK_MEAL,
     BREAK_REST,
     SHIFT
+}
+
+object SegmentTypeSerializer : KSerializer<SegmentType> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("SegmentType", PrimitiveKind.STRING)
+
+    private val lookup = SegmentType.values().associateBy { it.name }
+
+    override fun deserialize(decoder: Decoder): SegmentType {
+        return lookup[decoder.decodeString()] ?: SegmentType.N_IMPORTE_QUOI
+    }
+
+    override fun serialize(encoder: Encoder, value: SegmentType) {
+        encoder.encodeString(value.name)
+    }
 }
 
 @Serializable

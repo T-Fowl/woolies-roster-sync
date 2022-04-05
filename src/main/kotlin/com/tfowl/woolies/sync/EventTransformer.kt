@@ -110,6 +110,10 @@ internal class EventTransformer(
             val availability = workjamClient.availability(company, workjamClient.userId, event.id)
             transformTimeOff(availability)
         }
-        else                                    -> null
+        ScheduleEventType.N_IMPORTE_QUOI -> {
+            // TODO: Log warning?
+            null
+        }
+        else -> null
     }
 }

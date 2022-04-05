@@ -6,7 +6,13 @@
 package com.tfowl.workjam.client.model
 
 import kotlinx.serialization.Contextual
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonObject
 import java.time.Instant
 
@@ -24,6 +30,7 @@ data class ScheduleEvent(
     val recurrence: JsonObject? = null
 )
 
+@Serializable(with = ScheduleEventTypeSerializer::class)
 enum class ScheduleEventType {
     N_IMPORTE_QUOI,
     AVAILABILITY_AVAILABLE,
@@ -33,4 +40,17 @@ enum class ScheduleEventType {
     AVAILABILITY_UNAVAILABLE,
     AVAILABILITY_UNKNOWN,
     SHIFT
+}
+
+object ScheduleEventTypeSerializer : KSerializer<ScheduleEventType> {
+    override val descriptor: SerialDescriptor = PrimitiveSerialDescriptor("ScheduleEventType", PrimitiveKind.STRING)
+
+    private val lookup = ScheduleEventType.values().associateBy { it.name }
+    override fun deserialize(decoder: Decoder): ScheduleEventType {
+        return lookup[decoder.decodeString()] ?: ScheduleEventType.N_IMPORTE_QUOI
+    }
+
+    override fun serialize(encoder: Encoder, value: ScheduleEventType) {
+        encoder.encodeString(value.name)
+    }
 }

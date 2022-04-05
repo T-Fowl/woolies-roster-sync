@@ -95,6 +95,7 @@ class Sync : CliktCommand(name = "sync") {
             calendarZoneId,
             iCalManager,
             DefaultDescriptionGenerator,
+            DefaultSummaryGenerator,
         )
 
         val synchronizer = CalendarSynchronizer(googleCalendar, iCalManager)

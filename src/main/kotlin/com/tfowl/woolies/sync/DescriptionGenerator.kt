@@ -4,7 +4,7 @@ package com.tfowl.woolies.sync
 
 import java.time.Instant
 
-internal data class DescriptionViewModel(
+internal data class ShiftViewModel(
     val title: String,
     val startDateTime: Instant,
     val endDateTime: Instant,
@@ -25,11 +25,11 @@ internal data class CoworkerViewModel(
 }
 
 internal interface DescriptionGenerator {
-    fun generate(vm: DescriptionViewModel): String
+    fun generate(vm: ShiftViewModel): String
 }
 
 internal object DefaultDescriptionGenerator : DescriptionGenerator {
-    override fun generate(vm: DescriptionViewModel): String = buildString {
+    override fun generate(vm: ShiftViewModel): String = buildString {
         vm.storePositions.forEach { sp ->
             appendLine("<b>${sp.position}</b>")
 

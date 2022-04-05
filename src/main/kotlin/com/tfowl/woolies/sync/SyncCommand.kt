@@ -29,7 +29,6 @@ private const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
 private const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
 private const val WORKJAM_TOKEN_COOKIE_NAME = "token"
-private const val DEFAULT_DESCRIPTION_TEMPLATE = "event-description.hbs"
 private const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 private const val ICAL_SUFFIX = "@workjam.tfowl.com"
 
@@ -114,7 +113,7 @@ class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
             dsf.getDataStorage(EMPLOYEE_DATASTORE_ID, Json),
             calendarZoneId,
             iCalManager,
-            MustacheDescriptionGenerator(DEFAULT_DESCRIPTION_TEMPLATE)
+            DefaultDescriptionGenerator,
         )
 
         val synchronizer = CalendarSynchronizer(googleCalendar, iCalManager)

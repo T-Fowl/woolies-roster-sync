@@ -2,16 +2,7 @@
 
 package com.tfowl.woolies.sync
 
-import com.github.mustachejava.DefaultMustacheFactory
-import com.github.mustachejava.Mustache
-import java.io.StringWriter
 import java.time.Instant
-
-internal fun Mustache.execute(scope: Any): String {
-    val sw = StringWriter()
-    execute(sw, scope)
-    return sw.toString()
-}
 
 internal data class DescriptionViewModel(
     val title: String,
@@ -33,18 +24,24 @@ internal data class CoworkerViewModel(
 ) {
     val hasEmployeeNumber: Boolean = employeeNumber != null
     val hasAvatarUrl: Boolean = avatarUrl != null
+
+    val fullName: String get() = "$firstName $lastName"
 }
 
 internal interface DescriptionGenerator {
     fun generate(vm: DescriptionViewModel): String
 }
 
-internal class MustacheDescriptionGenerator(templateName: String) : DescriptionGenerator {
-    private val mf = DefaultMustacheFactory()
-    private val template = mf.compile(templateName)
-
-    override fun generate(vm: DescriptionViewModel): String {
-        return template.execute(vm)
+internal object DefaultDescriptionGenerator : DescriptionGenerator {
+    override fun generate(vm: DescriptionViewModel): String = buildString {
+        vm.coworkerPositions.forEach { cwp ->
+            appendLine("<b>${cwp.position}</b>")
+            cwp.coworkers.forEach { cw ->
+                append("\t${cw.fullName}")
+                cw.employeeNumber?.let { append(" (${cw.employeeNumber})") }
+                appendLine()
+            }
+            appendLine("<hr>")
+        }
     }
-
 }

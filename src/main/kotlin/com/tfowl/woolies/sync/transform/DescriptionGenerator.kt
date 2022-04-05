@@ -2,6 +2,13 @@ package com.tfowl.woolies.sync.transform
 
 import java.time.Instant
 
+/**
+ * Responsible for generating the description for [com.google.api.services.calendar.model.Event]s
+ */
+internal interface DescriptionGenerator {
+    fun generate(vm: ShiftViewModel): String
+}
+
 internal data class ShiftViewModel(
     val title: String,
     val startDateTime: Instant,
@@ -20,13 +27,6 @@ internal data class CoworkerViewModel(
     val avatarUrl: String? = null
 ) {
     val fullName: String get() = "$firstName $lastName"
-}
-
-/**
- * Responsible for generating the description for [com.google.api.services.calendar.model.Event]s
- */
-internal interface DescriptionGenerator {
-    fun generate(vm: ShiftViewModel): String
 }
 
 internal object DefaultDescriptionGenerator : DescriptionGenerator {

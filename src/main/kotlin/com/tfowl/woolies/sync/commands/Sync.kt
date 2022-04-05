@@ -1,8 +1,6 @@
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.context
-import com.github.ajalt.clikt.output.CliktHelpFormatter
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.*
@@ -13,6 +11,9 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
+import com.tfowl.woolies.sync.*
+import com.tfowl.woolies.sync.DefaultDescriptionGenerator
+import com.tfowl.woolies.sync.EventTransformer
 import com.tfowl.woolies.sync.utils.*
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
@@ -23,24 +24,15 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private const val WOOLIES = "6773940"
-private const val APPLICATION_NAME = "APPLICATION_NAME"
+internal const val APPLICATION_NAME = "APPLICATION_NAME"
 private const val EMPLOYEE_DATASTORE_ID = "EmployeeDetails"
 private const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
 private const val WORKJAM_TOKEN_COOKIE_NAME = "token"
-private const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
+internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 private const val ICAL_SUFFIX = "@workjam.tfowl.com"
-private const val DEFAULT_STORAGE_DIR = ".roster-sync"
+internal const val DEFAULT_STORAGE_DIR = ".roster-sync"
 
-class SyncCommand : CliktCommand(name = "woolies-roster-sync") {
-    init {
-        context {
-            helpFormatter = CliktHelpFormatter(
-                showDefaultValues = true,
-                showRequiredTag = true,
-            )
-        }
-    }
-
+class Sync : CliktCommand(name = "sync") {
     private val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
         .required()
 

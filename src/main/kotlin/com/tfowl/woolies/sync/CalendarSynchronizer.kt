@@ -43,33 +43,33 @@ class CalendarSynchronizer(
     val service: Calendar,
     val iCalManager: ICalManager,
 ) {
-    private fun createGoogleSyncActions(
-        currents: List<Event>,
-        targets: List<Event>
+    private fun computeSyncActions(
+        currentEvents: List<Event>,
+        requiredEvents: List<Event>
     ): List<SyncAction> {
-        val create = targets.filter { shift -> currents.none { it.iCalUID == shift.iCalUID } }
+        val create = requiredEvents.filter { shift -> currentEvents.none { it.iCalUID == shift.iCalUID } }
             .map { SyncAction.Create(it) }
 
-        val update = targets.mapNotNull { shift ->
-            currents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
+        val update = requiredEvents.mapNotNull { shift ->
+            currentEvents.find { it.iCalUID == shift.iCalUID }?.let { existing ->
                 SyncAction.Update(existing, shift)
             }
         }
 
-        val delete = currents
-            .filter { event -> !event.isCancelled() && targets.none { it.iCalUID == event.iCalUID } }
+        val delete = currentEvents
+            .filter { event -> !event.isCancelled() && requiredEvents.none { it.iCalUID == event.iCalUID } }
             .map { SyncAction.Delete(it) }
 
         return create + update + delete
     }
 
-    suspend fun sync(calendarId: String, syncStart: Instant, syncEnd: Instant, desired: List<Event>) = coroutineScope {
+    suspend fun sync(calendarId: String, syncPeriodStart: Instant, syncPeriodEnd: Instant, desiredEvents: List<Event>) = coroutineScope {
         val calendar = service.calendarView(calendarId)
 
         val events = calendar.list()
             .setMaxResults(2500)
-            .setTimeMin(syncStart.toGoogleDateTime())
-            .setTimeMax(syncEnd.toGoogleDateTime())
+            .setTimeMin(syncPeriodStart.toGoogleDateTime())
+            .setTimeMax(syncPeriodEnd.toGoogleDateTime())
             .setShowDeleted(true)
             .execute().items
             .filter { iCalManager.isFromThisNamespace(it) }
@@ -79,7 +79,7 @@ class CalendarSynchronizer(
             requireNotNull(e.start.dateTime) { "Unsupported null start datetime for $e" }
         }
 
-        val actions = createGoogleSyncActions(events, desired)
+        val actions = computeSyncActions(events, desiredEvents)
 
         val actionResults = service.batched {
             actions.map { action ->

@@ -5,6 +5,7 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp
+import com.google.api.client.extensions.java6.auth.oauth2.VerificationCodeReceiver
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
@@ -18,22 +19,19 @@ import com.google.api.client.http.apache.v2.ApacheHttpTransport
 import com.google.api.client.json.JsonFactory
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.client.util.store.DataStoreFactory
-import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import java.io.File
 
-const val DEFAULT_STORAGE_DIR = ".roster-sync"
-
 data class GoogleApiServiceConfig(
     val secrets: File,
     val applicationName: String,
     val scopes: List<String>,
+    val dataStoreFactory: DataStoreFactory,
     val httpTransport: HttpTransport = ApacheHttpTransport(),
     val jsonFactory: JsonFactory = GsonFactory.getDefaultInstance(),
-    val dataStoreFactory: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 )
 
 object GoogleCalendar {
@@ -48,7 +46,7 @@ object GoogleCalendar {
             .setAccessType("offline")
             .build()
 
-        val receiver = LocalServerReceiver.Builder().setPort(8888).build()
+        val receiver: VerificationCodeReceiver = LocalServerReceiver.Builder().setPort(8888).build()
         return AuthorizationCodeInstalledApp(flow, receiver).authorize("user")
     }
 

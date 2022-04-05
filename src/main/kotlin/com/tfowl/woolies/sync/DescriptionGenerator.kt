@@ -8,10 +8,10 @@ internal data class DescriptionViewModel(
     val title: String,
     val startDateTime: Instant,
     val endDateTime: Instant,
-    val coworkerPositions: List<CoworkerPositionViewModel>
+    val storePositions: List<StorePositionViewModel>
 )
 
-internal data class CoworkerPositionViewModel(
+internal data class StorePositionViewModel(
     val position: String,
     val coworkers: List<CoworkerViewModel>
 )
@@ -34,13 +34,16 @@ internal interface DescriptionGenerator {
 
 internal object DefaultDescriptionGenerator : DescriptionGenerator {
     override fun generate(vm: DescriptionViewModel): String = buildString {
-        vm.coworkerPositions.forEach { cwp ->
-            appendLine("<b>${cwp.position}</b>")
-            cwp.coworkers.forEach { cw ->
+        vm.storePositions.forEach { sp ->
+            appendLine("<b>${sp.position}</b>")
+
+            sp.coworkers.forEach { cw ->
                 append("\t${cw.fullName}")
+
                 cw.employeeNumber?.let { append(" (${cw.employeeNumber})") }
                 appendLine()
             }
+
             appendLine("<hr>")
         }
     }

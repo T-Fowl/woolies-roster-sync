@@ -39,7 +39,7 @@ internal class EventTransformer(
         }
 
         val coworkerPositionsViewModels = coworkingPositions.map { (position, coworkers) ->
-            CoworkerPositionViewModel(
+            StorePositionViewModel(
                 position = position.externalCode,
                 coworkers = coworkers.map { it.toViewModel() }.sortedBy { it.firstName }
             )

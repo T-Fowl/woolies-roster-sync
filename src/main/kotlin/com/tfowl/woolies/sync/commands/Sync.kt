@@ -44,38 +44,33 @@ class Sync : CliktCommand(name = "sync") {
         .file(mustBeReadable = true, canBeDir = false)
         .default(File(DEFAULT_CLIENT_SECRETS_FILE))
 
-    private val tokenFromCookies = option(
-        "--cookies",
-        help = "Cookies file in netscape format. Only needed on first run or when stored tokens have expired"
-    )
-        .path(mustExist = true, canBeDir = false, mustBeReadable = true)
-        .convert("FILE") {
-            it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
-        }
+    private val workjamToken by mutuallyExclusiveOptions(
+        option("--cookies", help = "Cookies file in netscape format")
+            .path(mustBeReadable = true)
+            .convert("FILE") {
+                it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
+            },
+        option("--token", help = "Workjam jwt"),
+        help = "Use when this program does not have a valid workjam authentication token stored"
+    ).single()
 
-    private val tokenFromArgs = option("--token", help = "Workjam jwt")
-
-    private val workjamTokenOverride by mutuallyExclusiveOptions(tokenFromCookies, tokenFromArgs).single()
-
-    private val syncPeriodStart by option(
+    val syncPeriodStart by option(
         help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
-    )
-        .offsetDateTime()
+    ).offsetDateTime()
         .default(OffsetDateTime.now(), defaultForHelp = "now")
 
-    private val syncPeriodEnd by option(
+    val syncPeriodEnd by option(
         help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
-    )
-        .offsetDateTime()
+    ).offsetDateTime()
         .default(OffsetDateTime.now().plusDays(15), defaultForHelp = "15 days from now")
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
-            .createClient("user", workjamTokenOverride)
+            .createClient("user", workjamToken)
 
         val googleCalendar = GoogleCalendar.create(
             GoogleApiServiceConfig(

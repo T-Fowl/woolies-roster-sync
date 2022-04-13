@@ -19,8 +19,8 @@ object DefaultSummaryGenerator : SummaryGenerator {
 
         /* Trucks */
         when (start) {
-            LocalTime.of(5, 30) -> return "AM Trucks"
-            LocalTime.of(13, 0) -> return "PM Trucks"
+            LocalTime.of(4, 30), LocalTime.of(5, 30) -> return "AM Trucks"
+            LocalTime.of(13, 0)                      -> return "PM Trucks"
         }
 
         /* General Picking */

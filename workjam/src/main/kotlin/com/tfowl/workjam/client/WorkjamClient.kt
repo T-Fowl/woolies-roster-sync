@@ -2,6 +2,7 @@ package com.tfowl.workjam.client
 
 import com.tfowl.workjam.client.model.*
 import io.ktor.client.*
+import io.ktor.client.call.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import java.time.OffsetDateTime
@@ -50,7 +51,7 @@ class DefaultWorkjamClient internal constructor(
             header(WorkjamTokenHeader, user.token)
             url.takeFrom(defaultUrl)
             url.requestUrlBuilder()
-        }
+        }.body()
     }
 
     override suspend fun employees(company: String): List<Employee> = get {

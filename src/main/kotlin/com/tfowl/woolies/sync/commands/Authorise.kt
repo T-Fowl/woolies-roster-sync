@@ -14,9 +14,13 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import java.io.File
+import kotlin.system.exitProcess
 
 class Authorise :
     CliktCommand(name = "authorise", help = "Used when authorising against your google accounts on a remote machine") {
+
+    private val remote by option("--remote", help = "Running this command on a remote headless machine")
+        .flag()
 
     private val doNotOpenBrowser by option(help = "Do not automatically open auth link in default browser")
         .flag("--auth-no-open-browser")
@@ -43,19 +47,31 @@ class Authorise :
             .setAccessType("offline")
             .build()
 
-        val receiver = LocalServerReceiver.Builder().setPort(8888).build()
+        if (remote) {
+            println("Please enter the code received on your machine:")
+            val code = readln()
 
-        val url = flow.newAuthorizationUrl().setRedirectUri(receiver.redirectUri).build()
-
-        if (doNotOpenBrowser) {
-            println("Please open the following address in your browser:")
-            println("  $url")
+            flow.createAndStoreCredential(
+                flow.newTokenRequest(code).setRedirectUri("http://localhost:8888/Callback").execute(),
+                "user"
+            )
+            println("Done")
         } else {
-            AuthorizationCodeInstalledApp.DefaultBrowser().browse(url)
+            val receiver = LocalServerReceiver.Builder().setPort(8888).build()
+
+            val url = flow.newAuthorizationUrl().setRedirectUri(receiver.redirectUri).build()
+
+            if (doNotOpenBrowser) {
+                println("Please open the following address in your browser:")
+                println("  $url")
+            } else {
+                AuthorizationCodeInstalledApp.DefaultBrowser().browse(url)
+            }
+
+            val code = receiver.waitForCode()
+            println("Copy and paste the following code into the headless machine:\n    $code")
         }
 
-        val code = receiver.waitForCode()
-
-        println("Copy and paste the following code into the headless machine:\n    $code")
+        exitProcess(0)
     }
 }

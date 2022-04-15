@@ -64,7 +64,7 @@ class Sync : CliktCommand(name = "sync") {
         help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     ).offsetDateTime()
-        .default(OffsetDateTime.now().plusDays(15), defaultForHelp = "15 days from now")
+        .default(OffsetDateTime.now().plusMonths(1), defaultForHelp = "1 month from now")
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))

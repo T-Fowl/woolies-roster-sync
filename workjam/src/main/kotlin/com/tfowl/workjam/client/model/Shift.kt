@@ -6,6 +6,7 @@
 package com.tfowl.workjam.client.model
 
 import com.tfowl.workjam.client.model.serialisers.ZoneIdSerialiser
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -15,6 +16,7 @@ import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
+import java.time.Instant
 import java.time.ZoneId
 
 @Serializable
@@ -95,8 +97,10 @@ data class ShiftPosition(
 @Serializable
 data class Segment(
     val type: SegmentType,
-    val startDateTime: String,
-    val endDateTime: String,
+    @Contextual
+    val startDateTime: Instant,
+    @Contextual
+    val endDateTime: Instant,
     val position: SegmentPosition,
     val location: SegmentLocation,
     val badgeTargetAudiences: JsonArray

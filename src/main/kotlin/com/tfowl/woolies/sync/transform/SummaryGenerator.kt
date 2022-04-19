@@ -2,6 +2,8 @@ package com.tfowl.woolies.sync.transform
 
 import com.tfowl.workjam.client.model.Segment
 import com.tfowl.workjam.client.model.Shift
+import com.tfowl.workjam.client.model.endTime
+import com.tfowl.workjam.client.model.startTime
 import java.time.LocalTime
 
 /**
@@ -12,10 +14,6 @@ import java.time.LocalTime
 interface SummaryGenerator {
     fun generate(shift: Shift): String
 }
-
-private val Shift.startTime: LocalTime get() = LocalTime.ofInstant(event.startDateTime, event.location.timeZoneID)
-private val Shift.endTime: LocalTime get() = LocalTime.ofInstant(event.endDateTime, event.location.timeZoneID)
-private val Segment.startTime: LocalTime get() = LocalTime.ofInstant(startDateTime, location.timeZoneID)
 
 data class ShiftRundown(
     val amTrucks: Boolean = false,

@@ -17,6 +17,7 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import java.time.Instant
+import java.time.LocalTime
 import java.time.ZoneId
 
 @Serializable
@@ -40,6 +41,10 @@ data class Shift(
     val locked: Boolean,
     val createdViaIntegration: Boolean
 )
+
+val Shift.startTime: LocalTime get() = LocalTime.ofInstant(event.startDateTime, event.location.timeZoneID)
+
+val Shift.endTime: LocalTime get() = LocalTime.ofInstant(event.endDateTime, event.location.timeZoneID)
 
 @Serializable
 data class Assignee(
@@ -105,6 +110,9 @@ data class Segment(
     val location: SegmentLocation,
     val badgeTargetAudiences: JsonArray
 )
+
+val Segment.startTime: LocalTime get() = LocalTime.ofInstant(startDateTime, location.timeZoneID)
+val Segment.endTime: LocalTime get() = LocalTime.ofInstant(endDateTime, location.timeZoneID)
 
 @Serializable(with = SegmentTypeSerializer::class)
 enum class SegmentType {

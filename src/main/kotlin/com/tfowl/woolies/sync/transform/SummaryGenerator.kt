@@ -6,6 +6,8 @@ import com.tfowl.workjam.client.model.endTime
 import com.tfowl.workjam.client.model.startTime
 import java.time.LocalTime
 
+fun String.removeSupPrefix(): String = replace(Regex("""^[*]?SUP\s*-\s*"""), "")
+
 /**
  * /**
  * Responsible for generating the summary/title for [com.google.api.services.calendar.model.Event]s
@@ -68,8 +70,8 @@ object DefaultSummaryGenerator : SummaryGenerator {
             rundown.amStart                      -> "Picking AM"
             rundown.pmStart                      -> "Picking PM"
             /* idk */
-            else                                 -> shift.event.title?.removePrefix("*SUP-")?.removePrefix("SUP-")
-                ?: "Error: Missing Title"
+            else                                 -> shift.event.title?.removeSupPrefix() ?: "Error: Missing Title"
         }
     }
 }
+

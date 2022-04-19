@@ -1,27 +1,28 @@
 package com.tfowl.woolies.sync.transform
 
-import java.time.Instant
+import com.tfowl.workjam.client.model.Shift
+import com.tfowl.workjam.client.model.endTime
+import com.tfowl.workjam.client.model.startTime
 
 /**
  * Responsible for generating the description for [com.google.api.services.calendar.model.Event]s
  */
 internal interface DescriptionGenerator {
-    fun generate(vm: ShiftViewModel): String
+    fun generate(describableShift: DescribableShift): String
 }
 
-internal data class ShiftViewModel(
+internal data class DescribableShift(
+    val shift: Shift,
     val title: String,
-    val startDateTime: Instant,
-    val endDateTime: Instant,
-    val storePositions: List<StorePositionViewModel>
+    val storePositions: List<DescribableStorePosition>
 )
 
-internal data class StorePositionViewModel(
+internal data class DescribableStorePosition(
     val position: String,
-    val coworkers: List<CoworkerViewModel>
+    val coworkers: List<DescribableCoworker>
 )
 
-internal data class CoworkerViewModel(
+internal data class DescribableCoworker(
     val firstName: String,
     val lastName: String,
     val avatarUrl: String? = null
@@ -30,8 +31,20 @@ internal data class CoworkerViewModel(
 }
 
 internal object DefaultDescriptionGenerator : DescriptionGenerator {
-    override fun generate(vm: ShiftViewModel): String = buildString {
-        vm.storePositions.forEach { sp ->
+    override fun generate(describableShift: DescribableShift): String = buildString {
+        appendLine("<h1>Segments</h1>")
+        describableShift.shift.segments.forEach { segment ->
+            append(segment.startTime)
+            append(" - ")
+            append(segment.endTime)
+            append(": ")
+            append(segment.position.name.removeSupPrefix())
+            appendLine()
+        }
+        appendLine("<hr>")
+
+        appendLine("<h1>Coworkers</h1>")
+        describableShift.storePositions.forEach { sp ->
             appendLine("<b>${sp.position}</b>")
 
             sp.coworkers.forEach { cw ->

@@ -29,8 +29,8 @@ internal class EventTransformer(
         val coworkers = workjam.coworkers(company, event.location.id, event.id)
 
         val summary = summaryGenerator.generate(shift)
-        val vm = createViewModel(shift, summary, coworkers)
-        val description = descriptionGenerator.generate(vm)
+        val describableShift = createDescribableShift(shift, summary, coworkers)
+        val description = descriptionGenerator.generate(describableShift)
 
         return GoogleEvent()
             .setStart(event.startDateTime, calendarZoneId)
@@ -67,26 +67,26 @@ internal class EventTransformer(
     }
 }
 
-private fun createViewModel(
+private fun createDescribableShift(
     shift: Shift,
     title: String,
     storePositions: List<Coworker>,
-): ShiftViewModel {
+): DescribableShift {
 
-    fun Employee.toViewModel(): CoworkerViewModel {
+    fun Employee.toDescribable(): DescribableCoworker {
         val avatarUrl = avatarUrl?.replace(
             "/image/upload",
             "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
         )
-        return CoworkerViewModel(firstName, lastName, avatarUrl)
+        return DescribableCoworker(firstName, lastName, avatarUrl)
     }
 
-    val storePositionViewModels = storePositions.map { (position, coworkers) ->
-        StorePositionViewModel(
+    val describableStorePositions = storePositions.map { (position, coworkers) ->
+        DescribableStorePosition(
             position = position.externalCode,
-            coworkers = coworkers.map { it.toViewModel() }.sortedBy { it.firstName }
+            coworkers = coworkers.map { it.toDescribable() }.sortedBy { it.firstName }
         )
     }.sortedBy { it.position }
 
-    return ShiftViewModel(title, shift.event.startDateTime, shift.event.endDateTime, storePositionViewModels)
+    return DescribableShift(shift, title, describableStorePositions)
 }

@@ -37,6 +37,8 @@ interface WorkjamClient {
     suspend fun shift(company: String, location: String, shift: String): Shift
 
     suspend fun availability(company: String, employee: String, event: String): Availability
+
+    suspend fun shifts(company: String, location: String, startDateTime: OffsetDateTime, endDateTime: OffsetDateTime, includeOverlaps: Boolean = true): List<Shift>
 }
 
 class DefaultWorkjamClient internal constructor(
@@ -102,6 +104,20 @@ class DefaultWorkjamClient internal constructor(
 
     override suspend fun availability(company: String, employee: String, event: String): Availability = get {
         path("api", "v4", "companies", company, "employees", employee, "availabilities", event)
+    }
+
+    override suspend fun shifts(
+        company: String,
+        location: String,
+        startDateTime: OffsetDateTime,
+        endDateTime: OffsetDateTime,
+        includeOverlaps: Boolean
+    ): List<Shift> = get {
+        path("api", "v4", "companies", company, "locations", location, "shifts")
+        parameters.append("startDateTime", startDateTime.toString())
+        parameters.append("endDateTime", endDateTime.toString())
+        parameters.append("includeOverlaps", includeOverlaps.toString())
+
     }
 }
 

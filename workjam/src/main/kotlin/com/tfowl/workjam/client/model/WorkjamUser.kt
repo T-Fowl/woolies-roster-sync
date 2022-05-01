@@ -9,5 +9,6 @@ data class WorkjamUser(
     val firstLogin: Boolean,
     val hasEmployers: Boolean,
     val userRole: String,
-    val correlationId: String
+    val correlationId: String,
+    val employers: List<String>,
 )

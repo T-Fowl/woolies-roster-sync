@@ -30,7 +30,7 @@ import java.time.format.DateTimeFormatter
 
 internal const val WOOLIES = "6773940"
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
-internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "app.workjam.com"
+internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "api.workjam.com"
 internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 internal const val ICAL_SUFFIX = "@workjam.tfowl.com"
@@ -114,4 +114,4 @@ private fun RawOption.offsetDateTime(formatter: DateTimeFormatter = DateTimeForm
     }
 
 private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
-    firstOrNull { it.domain == WORKJAM_TOKEN_COOKIE_DOMAIN && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value
+    firstOrNull { it.domain.endsWith(WORKJAM_TOKEN_COOKIE_DOMAIN) && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value

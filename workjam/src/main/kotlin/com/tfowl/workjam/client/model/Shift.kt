@@ -25,7 +25,7 @@ data class Shift(
     val id: String,
 
     @SerialName("externalId")
-    val externalID: String,
+    val externalID: String? = null,
 
     val status: String,
     val event: ScheduleEvent,
@@ -59,15 +59,17 @@ data class Profile(
     val id: String,
 
     @SerialName("externalId")
-    val externalID: String,
+    val externalID: String? = null,
 
     val externalCode: String,
     val firstName: String,
     val lastName: String,
 
     @SerialName("avatarUrl")
-    val avatarURL: String
-)
+    val avatarURL: String? = null
+) {
+    val fullName: String get() = "$firstName $lastName"
+}
 
 @Serializable
 data class CreatedBy(
@@ -96,7 +98,7 @@ data class ShiftPosition(
     val name: String,
 
     @SerialName("externalId")
-    val externalID: String
+    val externalID: String? = null,
 )
 
 @Serializable
@@ -144,11 +146,16 @@ data class SegmentLocation(
 
     @SerialName("timeZoneId")
     @Serializable(with = ZoneIdSerialiser::class)
-    val timeZoneID: ZoneId
+    val timeZoneID: ZoneId,
+
+    @SerialName("externalId")
+    val externalID: String? = null,
 )
 
 @Serializable
 data class SegmentPosition(
     val id: String,
-    val name: String
+    val name: String,
+    @SerialName("externalId")
+    val externalID: String? = null,
 )

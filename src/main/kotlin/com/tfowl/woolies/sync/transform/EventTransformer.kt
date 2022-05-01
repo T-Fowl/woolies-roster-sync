@@ -6,6 +6,7 @@ import com.tfowl.googleapi.toGoogleEventDateTime
 import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
+import java.time.LocalDate
 import java.time.ZoneId
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
@@ -26,10 +27,16 @@ internal class EventTransformer(
     private suspend fun transformShift(shift: Shift): GoogleEvent {
         val event = shift.event
 
-        val coworkers = workjam.coworkers(company, event.location.id, event.id)
+        val zone = event.location.timeZoneID
+        val storeRoster = workjam.shifts(
+            company, event.location.id,
+            startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
+            endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
+                .toOffsetDateTime()
+        )
 
         val summary = summaryGenerator.generate(shift)
-        val describableShift = createDescribableShift(shift, summary, coworkers)
+        val describableShift = createDescribableShift(shift, summary, storeRoster)
         val description = descriptionGenerator.generate(describableShift)
 
         return GoogleEvent()
@@ -70,23 +77,31 @@ internal class EventTransformer(
 private fun createDescribableShift(
     shift: Shift,
     title: String,
-    storePositions: List<Coworker>,
+    storeRoster: List<Shift>,
 ): DescribableShift {
 
-    fun Employee.toDescribable(): DescribableCoworker {
-        val avatarUrl = avatarUrl?.replace(
-            "/image/upload",
-            "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-        )
-        return DescribableCoworker(firstName, lastName, avatarUrl)
+    fun Shift.toDescribableAsignees(): List<DescribableShiftAssignee> {
+        return assignees.map { assignee ->
+            val profile = assignee.profile
+
+            DescribableShiftAssignee(
+                profile.firstName, profile.lastName,
+                profile.avatarURL?.replace(
+                    "/image/upload",
+                    "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                ),
+                startTime, endTime, event.type
+            )
+        }
     }
 
-    val describableStorePositions = storePositions.map { (position, coworkers) ->
-        DescribableStorePosition(
-            position = position.externalCode,
-            coworkers = coworkers.map { it.toDescribable() }.sortedBy { it.firstName }
-        )
-    }.sortedBy { it.position }
+    val describableStorePositions = storeRoster.groupBy { it.position.name.removeSupPrefix() }
+        .toSortedMap()
+        .map { (position, positionedShifts) ->
+            DescribableStorePosition(
+                position,
+                positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
+        }
 
     return DescribableShift(shift, title, describableStorePositions)
 }

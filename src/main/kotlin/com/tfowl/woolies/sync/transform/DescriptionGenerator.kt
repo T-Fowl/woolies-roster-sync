@@ -1,8 +1,10 @@
 package com.tfowl.woolies.sync.transform
 
+import com.tfowl.workjam.client.model.ScheduleEventType
 import com.tfowl.workjam.client.model.Shift
 import com.tfowl.workjam.client.model.endTime
 import com.tfowl.workjam.client.model.startTime
+import java.time.LocalTime
 
 /**
  * Responsible for generating the description for [com.google.api.services.calendar.model.Event]s
@@ -19,13 +21,16 @@ internal data class DescribableShift(
 
 internal data class DescribableStorePosition(
     val position: String,
-    val coworkers: List<DescribableCoworker>
+    val coworkers: List<DescribableShiftAssignee>
 )
 
-internal data class DescribableCoworker(
+internal data class DescribableShiftAssignee(
     val firstName: String,
     val lastName: String,
-    val avatarUrl: String? = null
+    val avatarUrl: String? = null,
+    val startTime: LocalTime,
+    val endTime: LocalTime,
+    val type: ScheduleEventType
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
@@ -48,7 +53,9 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
             appendLine("<b>${sp.position}</b>")
 
             sp.coworkers.forEach { cw ->
-                appendLine("\t${cw.fullName}")
+                append("\t${cw.startTime} - ${cw.endTime} ${cw.fullName}")
+                if(cw.type != ScheduleEventType.SHIFT) append(" OFF") // TODO
+                appendLine()
             }
 
             appendLine("<hr>")

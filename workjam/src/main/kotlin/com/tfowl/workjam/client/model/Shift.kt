@@ -61,7 +61,7 @@ data class Profile(
     @SerialName("externalId")
     val externalID: String? = null,
 
-    val externalCode: String,
+    val externalCode: String? = null,
     val firstName: String,
     val lastName: String,
 

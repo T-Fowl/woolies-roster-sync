@@ -54,13 +54,13 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         help = "Use when this program does not have a valid workjam authentication token stored"
     ).single()
 
-    val syncPeriodStart by option(
+    private val syncPeriodStart by option(
         help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     ).offsetDateTime()
         .default(OffsetDateTime.now(), defaultForHelp = "now")
 
-    val syncPeriodEnd by option(
+    private val syncPeriodEnd by option(
         help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
         helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
     ).offsetDateTime()

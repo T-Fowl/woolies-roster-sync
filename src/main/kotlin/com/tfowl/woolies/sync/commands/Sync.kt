@@ -34,7 +34,7 @@ internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "api.workjam.com"
 internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 internal const val ICAL_SUFFIX = "@workjam.tfowl.com"
-internal const val DEFAULT_STORAGE_DIR = ".roster-sync"
+internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
 
 class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam to your calendar") {
     private val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")

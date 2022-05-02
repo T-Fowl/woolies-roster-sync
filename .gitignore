@@ -3,7 +3,6 @@
 build/
 out/
 
-.roster-sync/
-coworkers.txt
+.woolies-roster/
 client-secrets.json
 cookies.txt

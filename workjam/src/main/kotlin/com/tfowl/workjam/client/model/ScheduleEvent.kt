@@ -13,7 +13,7 @@ import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonElement
 import java.time.Instant
 
 @Serializable
@@ -26,8 +26,8 @@ data class ScheduleEvent(
     val endDateTime: Instant,
     val location: Location,
     val title: String? = null,
-    val note: JsonObject? = null,
-    val recurrence: JsonObject? = null
+    val note: String? = null,
+    val recurrence: JsonElement? = null
 )
 
 @Serializable(with = ScheduleEventTypeSerializer::class)

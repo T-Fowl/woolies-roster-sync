@@ -18,7 +18,6 @@ internal const val TIME_OFF_SUMMARY = "Time Off"
 internal class EventTransformer(
     private val workjam: WorkjamClient,
     private val company: String,
-    private val calendarZoneId: ZoneId,
     private val iCalManager: ICalManager,
     private val descriptionGenerator: DescriptionGenerator,
     private val summaryGenerator: SummaryGenerator,
@@ -40,8 +39,8 @@ internal class EventTransformer(
         val description = descriptionGenerator.generate(describableShift)
 
         return GoogleEvent()
-            .setStart(event.startDateTime, calendarZoneId)
-            .setEnd(event.endDateTime, calendarZoneId)
+            .setStart(event.startDateTime, event.location.timeZoneID)
+            .setEnd(event.endDateTime, event.location.timeZoneID)
             .setSummary(summary)
             .setICalUID(iCalManager.generate(event))
             .setDescription(description)

@@ -83,15 +83,9 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val iCalManager = ICalManager(suffix = ICAL_SUFFIX)
 
-        val calendarZoneId =
-            googleCalendar.calendars().get(googleCalendarId).execute().timeZone?.toZoneIdOrNull()
-                ?: googleCalendar.settings().get("timezone").execute().value.toZoneIdOrNull()
-                ?: ZoneId.systemDefault()
-
         val transformer = EventTransformer(
             workjam,
             WOOLIES,
-            calendarZoneId,
             iCalManager,
             DefaultDescriptionGenerator,
             DefaultSummaryGenerator,

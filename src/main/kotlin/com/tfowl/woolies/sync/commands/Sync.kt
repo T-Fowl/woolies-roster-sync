@@ -13,7 +13,6 @@ import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
 import com.tfowl.woolies.sync.CalendarSynchronizer
 import com.tfowl.woolies.sync.toOffsetDateTimeOrNull
-import com.tfowl.woolies.sync.toZoneIdOrNull
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
@@ -25,10 +24,8 @@ import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.time.OffsetDateTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-internal const val WOOLIES = "6773940"
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
 internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "api.workjam.com"
 internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
@@ -72,6 +69,9 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
             .createClient("user", workjamToken)
 
+        val company = workjam.employers(workjam.userId).companies.singleOrNull()
+            ?: error("More than 1 company")
+
         val googleCalendar = GoogleCalendar.create(
             GoogleApiServiceConfig(
                 secrets = googleClientSecrets,
@@ -85,7 +85,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val transformer = EventTransformer(
             workjam,
-            WOOLIES,
+            company.id.toString(),
             iCalManager,
             DefaultDescriptionGenerator,
             DefaultSummaryGenerator,
@@ -93,7 +93,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val synchronizer = CalendarSynchronizer(googleCalendar, iCalManager)
 
-        val workjamShifts = workjam.events(WOOLIES, workjam.userId, syncPeriodStart, syncPeriodEnd)
+        val workjamShifts = workjam.events(company.id.toString(), workjam.userId, syncPeriodStart, syncPeriodEnd)
 
         val workjamEvents = workjamShifts.mapNotNull { transformer.transform(it) }
 

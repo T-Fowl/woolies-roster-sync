@@ -12,7 +12,7 @@ import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
 import com.tfowl.woolies.sync.CalendarSynchronizer
-import com.tfowl.woolies.sync.toOffsetDateTimeOrNull
+import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
@@ -23,7 +23,7 @@ import com.tfowl.woolies.sync.utils.readCookies
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import java.io.File
-import java.time.OffsetDateTime
+import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
@@ -51,17 +51,15 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         help = "Use when this program does not have a valid workjam authentication token stored"
     ).single()
 
-    private val syncPeriodStart by option(
-        help = "Date to start syncing shifts, in the ISO_OFFSET_DATE_TIME format",
-        helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
-    ).offsetDateTime()
-        .default(OffsetDateTime.now(), defaultForHelp = "now")
+    private val syncFrom by option(
+        help = "Local date to start syncing shifts, will sync from midnight at the start of the day",
+        helpTags = mapOf("Example" to "2007-12-03")
+    ).localDate().default(LocalDate.now(), defaultForHelp = "today")
 
-    private val syncPeriodEnd by option(
-        help = "Date to finish syncing shifts, in the ISO_OFFSET_DATE_TIME format",
-        helpTags = mapOf("Example" to "2007-12-03T10:15:30+01:00")
-    ).offsetDateTime()
-        .default(OffsetDateTime.now().plusMonths(1), defaultForHelp = "1 month from now")
+    private val syncTo by option(
+        help = "Local date to finish syncing shifts, will sync until midnight at the end of the day",
+        helpTags = mapOf("Example" to "2007-12-03")
+    ).localDate().defaultLazy(defaultForHelp = "a month from sync-from") { syncFrom.plusMonths(1) }
 
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
@@ -71,6 +69,9 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("More than 1 company")
+        val store = company.stores.singleOrNull { it.primary }
+            ?: error("More than 1 primary store")
+        val storeZoneId = store.storeAddress.city.timeZoneID ?: error("Primary store does not have a zone id")
 
         val googleCalendar = GoogleCalendar.create(
             GoogleApiServiceConfig(
@@ -93,19 +94,19 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val synchronizer = CalendarSynchronizer(googleCalendar, iCalManager)
 
-        val workjamShifts = workjam.events(company.id.toString(), workjam.userId, syncPeriodStart, syncPeriodEnd)
+        val syncStart = syncFrom.atStartOfDay(storeZoneId).toOffsetDateTime()
+        val syncEnd = syncTo.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
+
+        val workjamShifts = workjam.events(company.id.toString(), workjam.userId, syncStart, syncEnd)
 
         val workjamEvents = workjamShifts.mapNotNull { transformer.transform(it) }
 
-        synchronizer.sync(googleCalendarId, syncPeriodStart.toInstant(), syncPeriodEnd.toInstant(), workjamEvents)
+        synchronizer.sync(googleCalendarId, syncStart.toInstant(), syncEnd.toInstant(), workjamEvents)
     }
 }
 
-private fun RawOption.offsetDateTime(formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME): NullableOption<OffsetDateTime, OffsetDateTime> =
-    convert("OFFSET_DATE_TIME") {
-        it.toOffsetDateTimeOrNull(formatter)
-            ?: fail("A date in the $formatter format is required")
-    }
+private fun RawOption.localDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): NullableOption<LocalDate, LocalDate> =
+    convert("LOCAL_DATE") { it.toLocalDateOrNull(formatter) ?: fail("A date in the $formatter format is required") }
 
 private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
     firstOrNull { it.domain.endsWith(WORKJAM_TOKEN_COOKIE_DOMAIN) && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value

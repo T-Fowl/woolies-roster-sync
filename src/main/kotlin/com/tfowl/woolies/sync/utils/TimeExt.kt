@@ -1,27 +1,11 @@
-package com.tfowl.woolies.sync
+package com.tfowl.woolies.sync.utils
 
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.OffsetDateTime
-import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
-fun String.toZoneIdOrNull(): ZoneId? = try {
-    ZoneId.of(this)
-} catch (ignored: Throwable) {
+fun String.toLocalDateOrNull(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): LocalDate? = try {
+    LocalDate.parse(this, formatter)
+} catch (ignored: DateTimeParseException) {
     null
 }
-
-fun OffsetDateTime.toLocalDateTime(zone: ZoneId = ZoneId.systemDefault()): LocalDateTime =
-    atZoneSameInstant(zone).toLocalDateTime()
-
-fun OffsetDateTime.toLocalDate(zone: ZoneId = ZoneId.systemDefault()): LocalDate =
-    atZoneSameInstant(zone).toLocalDate()
-
-internal fun String.toOffsetDateTimeOrNull(formatter: DateTimeFormatter = DateTimeFormatter.ISO_OFFSET_DATE_TIME): OffsetDateTime? =
-    try {
-        OffsetDateTime.parse(this, formatter)
-    } catch (ignored: DateTimeParseException) {
-        null
-    }

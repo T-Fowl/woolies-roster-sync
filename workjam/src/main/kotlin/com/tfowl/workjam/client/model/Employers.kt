@@ -8,8 +8,8 @@ package com.tfowl.workjam.client.model
 import com.tfowl.workjam.client.model.serialisers.ZoneIdSerialiser
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import java.time.DayOfWeek
 import java.time.ZoneId
 
 @Serializable
@@ -26,7 +26,7 @@ data class Company(
     val companyURL: String,
 
     val description: String,
-    val startDayOfWeek: String,
+    val startDayOfWeek: DayOfWeek,
 
     @SerialName("logoUrl")
     val logoURL: String,
@@ -36,22 +36,14 @@ data class Company(
     val telephone: Telephone,
     val companyAddress: CompanyAddress,
     val stores: List<Store>,
-    val storeClassifications: JsonObject? = null,
-    val supportHelpText: JsonObject? = null,
-    val canManuallySuspendEmployees: JsonObject? = null,
-
-    @SerialName("themeId")
-    val themeID: String,
-
-    val weekStartDay: Long
 )
 
 @Serializable
 data class CompanyAddress(
     val id: Long,
     val streetLine1: String,
-    val streetLine2: String,
-    val streetLine3: String,
+    val streetLine2: String? = null,
+    val streetLine3: String? = null,
     val postalCode: String,
     val latitude: Double,
     val longitude: Double,
@@ -98,42 +90,20 @@ data class GeolocationConfig(
 data class Store(
     val id: Long,
     val storeName: String,
-    val description: JsonObject? = null,
-
-    @SerialName("facebookUrl")
-    val facebookURL: JsonObject? = null,
-
-    @SerialName("deepLinkFacebookUrl")
-    val deepLinkFacebookURL: JsonObject? = null,
-
-    @SerialName("logoUrl")
-    val logoURL: JsonObject? = null,
-
-    val avatarTokenKey: JsonObject? = null,
     val storeAddress: CompanyAddress,
     val telephone: Telephone,
-    val company: JsonObject? = null,
-    val storeGroup: JsonArray,
-    val storeClassification: JsonArray,
 
     @SerialName("externalId")
     val externalID: String,
 
     val externalCode: String,
     val isVisible: Boolean,
-    val managerCanAddEmployee: JsonObject? = null,
     val geofencingRadiusMeter: Long,
 
-    @SerialName("videoProfileId")
-    val videoProfileID: JsonObject? = null,
-
     val region: Region,
-    val videoResolution: JsonObject? = null,
-    val networkMasks: JsonObject? = null,
+    val networkMasks: List<String>? = null,
     val onSiteGeofencing: Boolean,
     val onSiteNetworkMasks: Boolean,
-    val startDayOfWeek: JsonObject? = null,
-    val positionAccessCodes: JsonObject? = null,
     val primary: Boolean,
     val visible: Boolean
 )

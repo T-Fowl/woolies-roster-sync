@@ -83,7 +83,7 @@ data class Country(
 data class GeolocationConfig(
     val latitude: Double,
     val longitude: Double,
-    val radius: Long
+    val radius: Double
 )
 
 @Serializable

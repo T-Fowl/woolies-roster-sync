@@ -39,6 +39,8 @@ interface WorkjamClient {
     suspend fun availability(company: String, employee: String, event: String): Availability
 
     suspend fun shifts(company: String, location: String, startDateTime: OffsetDateTime, endDateTime: OffsetDateTime, includeOverlaps: Boolean = true): List<Shift>
+
+    suspend fun periodicTimecards(company: String, employee: String): List<PeriodicTimecard>
 }
 
 class DefaultWorkjamClient internal constructor(
@@ -118,6 +120,10 @@ class DefaultWorkjamClient internal constructor(
         parameters.append("endDateTime", endDateTime.toString())
         parameters.append("includeOverlaps", includeOverlaps.toString())
 
+    }
+
+    override suspend fun periodicTimecards(company: String, employee: String): List<PeriodicTimecard> = get {
+        path("api", "v4", "companies", company, "employees", employee, "periodic_timecards")
     }
 }
 

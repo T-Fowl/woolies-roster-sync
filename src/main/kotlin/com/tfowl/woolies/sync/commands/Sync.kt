@@ -108,5 +108,5 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 private fun RawOption.localDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): NullableOption<LocalDate, LocalDate> =
     convert("LOCAL_DATE") { it.toLocalDateOrNull(formatter) ?: fail("A date in the $formatter format is required") }
 
-private fun List<Cookie>.findWorkjamTokenOrNull(): String? =
+internal fun List<Cookie>.findWorkjamTokenOrNull(): String? =
     firstOrNull { it.domain.endsWith(WORKJAM_TOKEN_COOKIE_DOMAIN) && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value

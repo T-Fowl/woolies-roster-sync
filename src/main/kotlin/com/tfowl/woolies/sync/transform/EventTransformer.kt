@@ -56,6 +56,8 @@ internal class EventTransformer(
             .setICalUID(iCalManager.generate(event))
     }
 
+    suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> = events.mapNotNull { transform(it) }
+
     suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {
         ScheduleEventType.SHIFT -> {
             val shift = workjam.shift(company, event.location.id, event.id)

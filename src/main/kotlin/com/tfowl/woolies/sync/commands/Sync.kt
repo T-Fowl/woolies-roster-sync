@@ -12,14 +12,10 @@ import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
 import com.tfowl.woolies.sync.CalendarSynchronizer
-import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
-import com.tfowl.woolies.sync.utils.Cookie
-import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
-import com.tfowl.woolies.sync.utils.ICalManager
-import com.tfowl.woolies.sync.utils.readCookies
+import com.tfowl.woolies.sync.utils.*
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -99,7 +95,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val workjamShifts = workjam.events(company.id.toString(), workjam.userId, syncStart, syncEnd)
 
-        val workjamEvents = workjamShifts.mapNotNull { transformer.transform(it) }
+        val workjamEvents = transformer.transformAll(workjamShifts)
 
         synchronizer.sync(googleCalendarId, syncStart.toInstant(), syncEnd.toInstant(), workjamEvents)
     }

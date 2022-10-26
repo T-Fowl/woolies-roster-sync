@@ -7,7 +7,6 @@ import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import java.time.LocalDate
-import java.time.ZoneId
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
@@ -56,21 +55,41 @@ internal class EventTransformer(
             .setICalUID(iCalManager.generate(event))
     }
 
-    suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> = events.mapNotNull { transform(it) }
+    suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> {
+        val sortedEvents = events.sortedBy { it.startDateTime }
+
+        val condensedEvents = sortedEvents.fold(emptyList<ScheduleEvent>()) { list, current ->
+            /*
+                Combines all consecutive time-off events into one long event
+                TODO: When syncing we need to check if we can condense into a time-off event just before the sync period
+                      Also should we find a way to store a reference of all the combined events? e.g. extendedProperties?
+            */
+            if (list.isNotEmpty() && list.last().type == ScheduleEventType.AVAILABILITY_TIME_OFF && current.type == ScheduleEventType.AVAILABILITY_TIME_OFF) {
+                list.dropLast(1) + list.last().copy(endDateTime = current.endDateTime)
+            } else {
+                list + current
+            }
+        }
+
+        return condensedEvents.mapNotNull { transform(it) }
+    }
 
     suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {
         ScheduleEventType.SHIFT -> {
             val shift = workjam.shift(company, event.location.id, event.id)
             transformShift(shift)
         }
+
         ScheduleEventType.AVAILABILITY_TIME_OFF -> {
             val availability = workjam.availability(company, workjam.userId, event.id)
             transformTimeOff(availability)
         }
+
         ScheduleEventType.N_IMPORTE_QUOI -> {
             // TODO: Log warning?
             null
         }
+
         else -> null
     }
 }

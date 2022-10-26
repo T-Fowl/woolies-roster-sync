@@ -81,6 +81,10 @@ class CalendarSynchronizer(
 
         val actions = computeSyncActions(events, desiredEvents)
 
+        /* Avoid Preconditions.checkState(!requestInfos.isEmpty());
+         * at com.google.api.client.googleapis.batch.BatchRequest.execute(BatchRequest.java:231) */
+        if(actions.isEmpty()) return@coroutineScope
+
         val actionResults = service.batched {
             actions.map { action ->
                 val request = action.toRequest(calendar)

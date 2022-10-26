@@ -39,10 +39,7 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
     override fun generate(describableShift: DescribableShift): String = buildString {
         appendLine("<h1>Segments</h1>")
         describableShift.shift.segments.forEach { segment ->
-            append(segment.startTime)
-            append(" - ")
-            append(segment.endTime)
-            append(": ")
+            append("${segment.startTime} - ${segment.endTime}: ")
             append(segment.position.name.removeSupPrefix())
             appendLine()
         }

@@ -24,10 +24,15 @@ internal class EventTransformer(
 
     private suspend fun transformShift(shift: Shift): GoogleEvent {
         val event = shift.event
+        val location = event.location
+        val zone = location.timeZoneID
 
-        val zone = event.location.timeZoneID
+        val store = workjam.employers(workjam.userId).companies.firstNotNullOf { company ->
+            company.stores.find { store -> store.externalID == location.externalID }
+        }
+
         val storeRoster = workjam.shifts(
-            company, event.location.id,
+            company, location.id,
             startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
             endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
                 .toOffsetDateTime()
@@ -43,6 +48,7 @@ internal class EventTransformer(
             .setSummary(summary)
             .setICalUID(iCalManager.generate(event))
             .setDescription(description)
+            .setLocation(store.renderAddress())
     }
 
     private fun transformTimeOff(availability: Availability): GoogleEvent {
@@ -124,4 +130,19 @@ private fun createDescribableShift(
         }
 
     return DescribableShift(shift, title, describableStorePositions)
+}
+
+// e.g: Woolworths, 224-238 Mt Dandenong Rd, Croydon VIC 3136, Australia
+private fun Store.renderAddress(): String = buildString {
+    val address = storeAddress
+
+    // TODO: This is only really designed to work with stores
+    append("Woolworths, ")
+    append(address.streetLine1)
+    address.streetLine2?.let { append(' ').append(it) }
+    address.streetLine3?.let { append(' ').append(it) }
+    append(", ").append(address.city.name)
+    append(" ").append(address.province.name)
+    append(" ").append(address.postalCode)
+    append(", ").append(address.country.name)
 }

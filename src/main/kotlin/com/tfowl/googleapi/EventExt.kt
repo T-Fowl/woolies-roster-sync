@@ -56,3 +56,40 @@ class ExtendedPropertiesBuilder(private val map: MutableMap<String, String>) {
 
 fun Event.buildExtendedProperties(block: EventExtendedPropertiesBuilder.() -> Unit): Event =
     setExtendedProperties(EventExtendedPropertiesBuilder().also(block).build())
+
+val Event.extendedPropertiesUnsplit: Event.ExtendedProperties get() = extendedProperties.unchunk()
+private fun Event.ExtendedProperties.unchunk(): Event.ExtendedProperties {
+    fun String.parse(): Pair<String, Int> {
+        val iStart = lastIndexOf('[')
+        val iEnd = lastIndexOf(']')
+
+        return Pair(substring(0, iStart), substring(iStart + 1, iEnd).toInt())
+    }
+
+    fun Map<String, String>.unchunk(): Map<String, String> {
+        val input = this
+        val result = mutableMapOf<String, String>()
+
+        // Do all the non-chunked properties first
+        for (key in keys) {
+            if (!key.endsWith("]"))
+                result[key] = this[key]!!
+        }
+
+        val k = keys.filter { '[' in it && it.endsWith(']') }
+            .map { it.parse() }
+            .groupBy { it.first }
+            .mapValues { it.value.map { it.second }.sorted() }
+
+        k.forEach { key, indices ->
+            result[key] = indices.map { i -> input["$key[$i]"]!! }.joinToString(separator = "")
+        }
+
+
+        return result
+    }
+
+    return Event.ExtendedProperties()
+        .setPrivate(private?.unchunk())
+        .setShared(shared?.unchunk())
+}

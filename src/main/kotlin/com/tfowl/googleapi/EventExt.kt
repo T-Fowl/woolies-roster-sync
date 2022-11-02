@@ -17,24 +17,42 @@ fun Event.setStart(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): Eve
 fun Event.setEnd(instant: Instant, zone: ZoneId = ZoneId.systemDefault()): Event =
     setEnd(instant.toGoogleEventDateTime(zone))
 
-fun Event.ExtendedProperties.setSharedChecked(properties: Map<String, String>): Event.ExtendedProperties =
-    setShared(properties.checkExtendedProperties())
 
-fun Event.ExtendedProperties.setPrivateChecked(properties: Map<String, String>): Event.ExtendedProperties =
-    setPrivate(properties.checkExtendedProperties())
+class EventExtendedPropertiesBuilder {
+    private val shared = mutableMapOf<String, String>()
+    private val private = mutableMapOf<String, String>()
 
-private fun Map<String, String>.checkExtendedProperties(): Map<String, String> {
-    check(size <= 300) { "$size is more than the 300 extended properties count limit" }
+    fun shared(block: ExtendedPropertiesBuilder.() -> Unit): Unit = ExtendedPropertiesBuilder(shared).block()
+    fun private(block: ExtendedPropertiesBuilder.() -> Unit): Unit = ExtendedPropertiesBuilder(private).block()
 
-    var sum = 0
-    for ((key, value) in this) {
-        sum += key.length + value.length
-        check(key.length <= 44) { "Property key is longer than 44 characters and will be silently dropped: $key" }
-        check(value.length <= 1024) { "Property is longer than 1024 characters and will be silently truncated: $value" }
-    }
-
-    check(sum <= 32000) { "${sum / 1024}kB is larger than the 32kB size limit for extended properties" }
-
-
-    return this
+    fun build(): Event.ExtendedProperties = Event.ExtendedProperties()
+        .setShared(shared.takeIf { it.isNotEmpty() })
+        .setPrivate(private.takeIf { it.isNotEmpty() })
 }
+
+class ExtendedPropertiesBuilder(private val map: MutableMap<String, String>) {
+    infix fun String.prop(value: String): Unit {
+        check(map.size + 1 <= 300) { "Cannot have more than 300 extended properties" }
+
+        val key = this
+
+        if (value.length <= 1024) {
+            check(key.length <= 44) { "Key \"$key\" is ${key.length} characters long. Over 44 is silently dropped." }
+
+            map[key] = value
+        } else {
+            val chunks = value.chunked(1024)
+            val maxChunkKeyIndexWidth = chunks.lastIndex.toString().length + 2
+
+            check(key.length + maxChunkKeyIndexWidth <= 44) { "Key \"$key\" is ${key.length + maxChunkKeyIndexWidth} characters long including value index. Over 44 is silently dropped." }
+
+            chunks.forEachIndexed { i, chunk ->
+                map["$key[$i]"] = chunk
+            }
+        }
+
+    }
+}
+
+fun Event.buildExtendedProperties(block: EventExtendedPropertiesBuilder.() -> Unit): Event =
+    setExtendedProperties(EventExtendedPropertiesBuilder().also(block).build())

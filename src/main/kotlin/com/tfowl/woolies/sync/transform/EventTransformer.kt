@@ -1,12 +1,20 @@
 package com.tfowl.woolies.sync.transform
 
-import com.tfowl.googleapi.setEnd
-import com.tfowl.googleapi.setStart
-import com.tfowl.googleapi.toGoogleEventDateTime
+import com.tfowl.googleapi.*
 import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
+import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
@@ -21,6 +29,12 @@ internal class EventTransformer(
     private val descriptionGenerator: DescriptionGenerator,
     private val summaryGenerator: SummaryGenerator,
 ) {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        serializersModule = SerializersModule {
+            contextual(InstantSerialiser(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
+        }
+    }
 
     private suspend fun transformShift(shift: Shift): GoogleEvent {
         val event = shift.event
@@ -42,13 +56,19 @@ internal class EventTransformer(
         val describableShift = createDescribableShift(shift, summary, storeRoster)
         val description = descriptionGenerator.generate(describableShift)
 
-        return GoogleEvent()
+        GoogleEvent()
             .setStart(event.startDateTime, event.location.timeZoneID)
             .setEnd(event.endDateTime, event.location.timeZoneID)
             .setSummary(summary)
             .setICalUID(iCalManager.generate(event))
             .setDescription(description)
             .setLocation(store.renderAddress())
+            .buildExtendedProperties {
+                private {
+                    "schedule-event-type" prop event.type.name
+                    "shift:json" prop json.encodeToString(shift)
+                }
+            }
     }
 
     private fun transformTimeOff(availability: Availability): GoogleEvent {
@@ -59,6 +79,12 @@ internal class EventTransformer(
             .setEnd(event.endDateTime.toGoogleEventDateTime())
             .setSummary(TIME_OFF_SUMMARY)
             .setICalUID(iCalManager.generate(event))
+            .buildExtendedProperties {
+                private {
+                    "schedule-event-type" prop event.type.name
+                    "availability:json" prop json.encodeToString(availability)
+                }
+            }
     }
 
     suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> {

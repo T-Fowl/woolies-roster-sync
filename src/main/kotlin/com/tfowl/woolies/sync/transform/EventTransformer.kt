@@ -5,16 +5,14 @@ import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.*
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.coroutines.CoroutineContext
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
@@ -36,21 +34,28 @@ internal class EventTransformer(
         }
     }
 
-    private suspend fun transformShift(shift: Shift): GoogleEvent {
+    private suspend fun transformShift(shift: Shift): GoogleEvent = coroutineScope {
         val event = shift.event
         val location = event.location
         val zone = location.timeZoneID
 
-        val store = workjam.employers(workjam.userId).companies.firstNotNullOf { company ->
-            company.stores.find { store -> store.externalID == location.externalID }
+        val storeAsync = async(Dispatchers.IO) {
+            workjam.employers(workjam.userId).companies.firstNotNullOf { company ->
+                company.stores.find { store -> store.externalID == location.externalID }
+            }
         }
 
-        val storeRoster = workjam.shifts(
-            company, location.id,
-            startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
-            endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
-                .toOffsetDateTime()
-        )
+        val storeRosterAsync = async(Dispatchers.IO) {
+            workjam.shifts(
+                company, location.id,
+                startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
+                endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
+                    .toOffsetDateTime()
+            )
+        }
+
+        val store = storeAsync.await()
+        val storeRoster = storeRosterAsync.await()
 
         val summary = summaryGenerator.generate(shift)
         val describableShift = createDescribableShift(shift, summary, storeRoster)
@@ -103,7 +108,11 @@ internal class EventTransformer(
             }
         }
 
-        return condensedEvents.mapNotNull { transform(it) }
+        return coroutineScope {
+            condensedEvents.map { async(Dispatchers.IO) { transform(it) } }
+                .awaitAll()
+                .filterNotNull()
+        }
     }
 
     suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {

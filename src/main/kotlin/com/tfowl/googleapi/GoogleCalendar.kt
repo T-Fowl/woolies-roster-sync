@@ -66,6 +66,7 @@ class CalendarView(
     private val api: Calendar,
     private val calendarId: String
 ) {
+    fun batch(): BatchRequest = api.batch()
     fun list() = api.events().list(calendarId)
     fun insert(event: Event) = api.events().insert(calendarId, event)
     fun update(id: String, content: Event) = api.events().update(calendarId, id, content)
@@ -104,10 +105,9 @@ class BatchRequestContext(private val batch: BatchRequest) {
         queueSuspending(batch)
 }
 
-inline fun <R> Calendar.batched(block: BatchRequestContext.() -> R): R {
-    val batch = batch()
-    val ctx = BatchRequestContext(batch)
+inline fun <R> BatchRequest.use(block: BatchRequestContext.() -> R): R {
+    val ctx = BatchRequestContext(this)
     val result = ctx.block()
-    batch.execute()
+    execute()
     return result
 }

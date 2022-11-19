@@ -1,7 +1,6 @@
 package com.tfowl.woolies.sync.transform
 
 import com.tfowl.googleapi.*
-import com.tfowl.woolies.sync.utils.ICalManager
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
@@ -12,7 +11,6 @@ import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.coroutines.CoroutineContext
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
@@ -23,7 +21,7 @@ internal const val TIME_OFF_SUMMARY = "Time Off"
 internal class EventTransformer(
     private val workjam: WorkjamClient,
     private val company: String,
-    private val iCalManager: ICalManager,
+    private val domain: String,
     private val descriptionGenerator: DescriptionGenerator,
     private val summaryGenerator: SummaryGenerator,
 ) {
@@ -65,7 +63,7 @@ internal class EventTransformer(
             .setStart(event.startDateTime, event.location.timeZoneID)
             .setEnd(event.endDateTime, event.location.timeZoneID)
             .setSummary(summary)
-            .setICalUID(iCalManager.generate(event))
+            .setICalUID("${event.id}@$domain")
             .setDescription(description)
             .setLocation(store.renderAddress())
             .buildExtendedProperties {
@@ -83,7 +81,7 @@ internal class EventTransformer(
             .setStart(event.startDateTime.toGoogleEventDateTime())
             .setEnd(event.endDateTime.toGoogleEventDateTime())
             .setSummary(TIME_OFF_SUMMARY)
-            .setICalUID(iCalManager.generate(event))
+            .setICalUID("${event.id}@$domain")
             .buildExtendedProperties {
                 private {
                     "schedule-event-type" prop event.type.name

@@ -11,6 +11,7 @@ import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.googleapi.GoogleApiServiceConfig
 import com.tfowl.googleapi.GoogleCalendar
+import com.tfowl.googleapi.calendarView
 import com.tfowl.woolies.sync.CalendarSynchronizer
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
@@ -26,7 +27,7 @@ internal const val APPLICATION_NAME = "APPLICATION_NAME"
 internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "api.workjam.com"
 internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
-internal const val ICAL_SUFFIX = "@workjam.tfowl.com"
+internal const val DOMAIN = "workjam.tfowl.com"
 internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
 
 class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam to your calendar") {
@@ -78,17 +79,15 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
             )
         )
 
-        val iCalManager = ICalManager(suffix = ICAL_SUFFIX)
-
         val transformer = EventTransformer(
             workjam,
             company.id.toString(),
-            iCalManager,
+            DOMAIN,
             DefaultDescriptionGenerator,
             DefaultSummaryGenerator,
         )
 
-        val synchronizer = CalendarSynchronizer(googleCalendar, iCalManager)
+        val synchronizer = CalendarSynchronizer(googleCalendar.calendarView(googleCalendarId), DOMAIN)
 
         val syncStart = syncFrom.atStartOfDay(storeZoneId).toOffsetDateTime()
         val syncEnd = syncTo.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
@@ -97,7 +96,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val workjamEvents = transformer.transformAll(workjamShifts)
 
-        synchronizer.sync(googleCalendarId, syncStart.toInstant(), syncEnd.toInstant(), workjamEvents)
+        synchronizer.sync(syncStart.toInstant(), syncEnd.toInstant(), workjamEvents)
     }
 }
 

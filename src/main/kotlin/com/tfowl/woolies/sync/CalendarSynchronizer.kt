@@ -5,10 +5,8 @@ import com.github.michaelbull.result.Ok
 import com.github.michaelbull.result.Result
 import com.github.michaelbull.result.map
 import com.google.api.client.googleapis.json.GoogleJsonError
-import com.google.api.services.calendar.Calendar
 import com.google.api.services.calendar.model.Event
 import com.tfowl.googleapi.*
-import com.tfowl.woolies.sync.utils.ICalManager
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -40,8 +38,8 @@ private fun SyncAction.toRequest(view: CalendarView) = when (this) {
 }
 
 class CalendarSynchronizer(
-    val service: Calendar,
-    val iCalManager: ICalManager,
+    val calendar: CalendarView,
+    val domain: String,
 ) {
     private fun computeSyncActions(
         currentEvents: List<Event>,
@@ -63,8 +61,7 @@ class CalendarSynchronizer(
         return create + update + delete
     }
 
-    suspend fun sync(calendarId: String, syncPeriodStart: Instant, syncPeriodEnd: Instant, desiredEvents: List<Event>) = coroutineScope {
-        val calendar = service.calendarView(calendarId)
+    suspend fun sync(syncPeriodStart: Instant, syncPeriodEnd: Instant, desiredEvents: List<Event>) = coroutineScope {
 
         val events = calendar.list()
             .setMaxResults(2500)
@@ -72,7 +69,7 @@ class CalendarSynchronizer(
             .setTimeMax(syncPeriodEnd.toGoogleDateTime())
             .setShowDeleted(true)
             .execute().items
-            .filter { iCalManager.isFromThisNamespace(it) }
+            .filter { it.iCalUID?.endsWith("@$domain") == true }
 
         // TODO: How to handle this? Remove / Recreate / ignore etc
         events.forEach { e ->
@@ -85,7 +82,7 @@ class CalendarSynchronizer(
          * at com.google.api.client.googleapis.batch.BatchRequest.execute(BatchRequest.java:231) */
         if(actions.isEmpty()) return@coroutineScope
 
-        val actionResults = service.batched {
+        val actionResults = calendar.batch().use {
             actions.map { action ->
                 val request = action.toRequest(calendar)
 

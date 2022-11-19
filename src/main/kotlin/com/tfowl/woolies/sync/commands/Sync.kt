@@ -9,10 +9,10 @@ import com.github.ajalt.clikt.parameters.types.path
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
-import com.tfowl.googleapi.GoogleApiServiceConfig
-import com.tfowl.googleapi.GoogleCalendar
-import com.tfowl.googleapi.calendarView
-import com.tfowl.woolies.sync.CalendarSynchronizer
+import com.tfowl.gcal.GoogleApiServiceConfig
+import com.tfowl.gcal.GoogleCalendar
+import com.tfowl.gcal.calendarView
+import com.tfowl.gcal.sync
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
@@ -21,6 +21,7 @@ import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import java.io.File
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
@@ -70,7 +71,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
             ?: error("More than 1 primary store")
         val storeZoneId = store.storeAddress.city.timeZoneID ?: error("Primary store does not have a zone id")
 
-        val googleCalendar = GoogleCalendar.create(
+        val calendarApi = GoogleCalendar.create(
             GoogleApiServiceConfig(
                 secrets = googleClientSecrets,
                 applicationName = APPLICATION_NAME,
@@ -87,8 +88,6 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
             DefaultSummaryGenerator,
         )
 
-        val synchronizer = CalendarSynchronizer(googleCalendar.calendarView(googleCalendarId), DOMAIN)
-
         val syncStart = syncFrom.atStartOfDay(storeZoneId).toOffsetDateTime()
         val syncEnd = syncTo.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
 
@@ -96,7 +95,14 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val workjamEvents = transformer.transformAll(workjamShifts)
 
-        synchronizer.sync(syncStart.toInstant(), syncEnd.toInstant(), workjamEvents)
+        sync(
+            calendarApi,
+            calendarApi.calendarView(googleCalendarId),
+            syncFrom..syncTo,
+            workjamEvents,
+            ZoneId.of("Australia/Melbourne"), // TODO
+            DOMAIN
+        )
     }
 }
 

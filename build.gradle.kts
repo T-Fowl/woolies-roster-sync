@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.6.20"
-    kotlin("plugin.serialization") version "1.6.20" apply false
+    kotlin("jvm") version "1.7.20"
+    kotlin("plugin.serialization") version "1.7.20" apply false
     application
 }
 
@@ -36,9 +36,7 @@ dependencies {
 
     implementation("com.github.ajalt.clikt:clikt:3.4.0")
 
-    implementation("com.google.api-client:google-api-client:1.33.4")
-    implementation("com.google.oauth-client:google-oauth-client-jetty:1.33.1")
-    implementation("com.google.apis:google-api-services-calendar:v3-rev20220203-1.32.1")
+    implementation(project(":gcal-sync-kt"))
 
     implementation("com.michael-bull.kotlin-result:kotlin-result:1.1.14")
     implementation("com.michael-bull.kotlin-result:kotlin-result-coroutines:1.1.14")

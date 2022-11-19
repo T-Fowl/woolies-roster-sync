@@ -1,6 +1,9 @@
 package com.tfowl.woolies.sync.transform
 
-import com.tfowl.googleapi.*
+import com.tfowl.gcal.buildSafeExtendedProperties
+import com.tfowl.gcal.setEnd
+import com.tfowl.gcal.setStart
+import com.tfowl.gcal.toGoogleEventDateTime
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
@@ -45,7 +48,8 @@ internal class EventTransformer(
 
         val storeRosterAsync = async(Dispatchers.IO) {
             workjam.shifts(
-                company, location.id,
+                company,
+                location.id,
                 startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
                 endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
                     .toOffsetDateTime()
@@ -59,17 +63,16 @@ internal class EventTransformer(
         val describableShift = createDescribableShift(shift, summary, storeRoster)
         val description = descriptionGenerator.generate(describableShift)
 
-        GoogleEvent()
-            .setStart(event.startDateTime, event.location.timeZoneID)
+        GoogleEvent().setStart(event.startDateTime, event.location.timeZoneID)
             .setEnd(event.endDateTime, event.location.timeZoneID)
             .setSummary(summary)
             .setICalUID("${event.id}@$domain")
             .setDescription(description)
             .setLocation(store.renderAddress())
-            .buildExtendedProperties {
+            .buildSafeExtendedProperties {
                 private {
-                    "schedule-event-type" prop event.type.name
-                    "shift:json" prop json.encodeToString(shift)
+                    prop("schedule-event-type" to event.type.name)
+                    prop("shift:json" to json.encodeToString(shift))
                 }
             }
     }
@@ -77,15 +80,14 @@ internal class EventTransformer(
     private fun transformTimeOff(availability: Availability): GoogleEvent {
         val event = availability.event
 
-        return GoogleEvent()
-            .setStart(event.startDateTime.toGoogleEventDateTime())
+        return GoogleEvent().setStart(event.startDateTime.toGoogleEventDateTime())
             .setEnd(event.endDateTime.toGoogleEventDateTime())
             .setSummary(TIME_OFF_SUMMARY)
             .setICalUID("${event.id}@$domain")
-            .buildExtendedProperties {
+            .buildSafeExtendedProperties {
                 private {
-                    "schedule-event-type" prop event.type.name
-                    "availability:json" prop json.encodeToString(availability)
+                    prop("schedule-event-type" to event.type.name)
+                    prop("availability:json" to json.encodeToString(availability))
                 }
             }
     }
@@ -107,9 +109,7 @@ internal class EventTransformer(
         }
 
         return coroutineScope {
-            condensedEvents.map { async(Dispatchers.IO) { transform(it) } }
-                .awaitAll()
-                .filterNotNull()
+            condensedEvents.map { async(Dispatchers.IO) { transform(it) } }.awaitAll().filterNotNull()
         }
     }
 
@@ -144,21 +144,16 @@ private fun createDescribableShift(
             val profile = assignee.profile
 
             DescribableShiftAssignee(
-                profile.firstName, profile.lastName,
-                profile.avatarURL?.replace(
-                    "/image/upload",
-                    "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                ),
-                startTime, endTime, event.type
+                profile.firstName, profile.lastName, profile.avatarURL?.replace(
+                    "/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                ), startTime, endTime, event.type
             )
         }
     }
 
-    val describableStorePositions = storeRoster.groupBy { it.position.name.removeSupPrefix() }
-        .toSortedMap()
-        .map { (position, positionedShifts) ->
-            DescribableStorePosition(
-                position,
+    val describableStorePositions =
+        storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap().map { (position, positionedShifts) ->
+            DescribableStorePosition(position,
                 positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
         }
 

@@ -1,0 +1,3 @@
+[submodule "gcal-sync-kt"]
+	path = gcal-sync-kt
+	url = https://github.com/T-Fowl/gcal-sync-kt.git

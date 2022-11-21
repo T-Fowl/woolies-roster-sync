@@ -24,37 +24,60 @@ private inline operator fun <T> List<T>.component7(): T {
     return get(6)
 }
 
-private fun String.unescapeHtml(): String {
-    val text = this@unescapeHtml
-    if (text.isEmpty()) return text
+private val ESCAPED_ENTITY_BY_NAME = arrayOf(
+    "&Tab;" to '\t',
+    "&NewLine;" to '\n',
+    "&nbsp;" to ' ',
+    "&quot;" to '"',
+    "&amp;" to '&',
+    "&lt;" to '<',
+    "&gt;" to '>',
+)
+
+fun String.unescapeHtml(): String {
+    if (isEmpty()) return this
+    val text = this
 
     return buildString(length) {
-        var idx = 0
-        chars@ while (idx < text.length) {
-            val chr = text[idx]
+        var i = 0
 
-            if (chr == '&') {
-                if (text.startsWith("&quot;", startIndex = idx)) {
-                    append('"')
-                    idx += 6
-                    continue@chars
-                } else if (text.startsWith("&amp;", startIndex = idx)) {
-                    append('&')
-                    idx += 5
-                    continue@chars
-                } else if (text.startsWith("&lt;", startIndex = idx)) {
-                    append('<')
-                    idx += 4
-                    continue@chars
-                } else if (text.startsWith("&gt;", startIndex = idx)) {
-                    append('>')
-                    idx += 4
-                    continue@chars
+        chars@ while (i < text.length) {
+            val curr = text[i]
+
+            if (curr == '&') {
+                // ASCII code is at minimum &#9; long, hence +3
+                if (i + 3 < text.length && text[i + 1] == '#') {
+                    val end = text.indexOf(';', startIndex = i)
+
+                    if (end > 0) {
+                        val code = if (text[i + 2] == 'x') {
+                            text.substring(i + 3, end).toIntOrNull(16)
+                        } else {
+                            text.substring(i + 2, end).toIntOrNull()
+                        }
+
+                        if (code != null) {
+                            append(code.toChar())
+                            i = end + 1
+                            continue@chars
+                        }
+                    }
+                } else {
+                    // Try the named entities
+                    for ((code, escaped) in ESCAPED_ENTITY_BY_NAME) {
+                        if (text.startsWith(code, startIndex = i, ignoreCase = true)) {
+                            append(escaped)
+                            i += code.length
+                            continue@chars
+                        }
+                    }
                 }
+
             }
 
-            append(chr)
-            idx++
+            // Fallback
+            append(curr)
+            i++
         }
     }
 }
@@ -68,7 +91,7 @@ data class Cookie(
     val expires: Instant,
 )
 
-private fun String.parseNetscapeCookieLine(): Cookie {
+internal fun String.parseNetscapeCookieLine(): Cookie {
     val (domain, _ /* flag */, path, secure, expiration, name, value) = split('\t')
     return Cookie(
         name = name,

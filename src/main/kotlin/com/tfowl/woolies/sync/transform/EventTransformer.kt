@@ -1,12 +1,19 @@
 package com.tfowl.woolies.sync.transform
 
-import com.tfowl.googleapi.setEnd
-import com.tfowl.googleapi.setStart
-import com.tfowl.googleapi.toGoogleEventDateTime
-import com.tfowl.woolies.sync.utils.ICalManager
+import com.tfowl.gcal.buildSafeExtendedProperties
+import com.tfowl.gcal.setEnd
+import com.tfowl.gcal.setStart
+import com.tfowl.gcal.toGoogleEventDateTime
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
+import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
+import kotlinx.coroutines.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.*
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
 internal const val TIME_OFF_SUMMARY = "Time Off"
@@ -17,42 +24,72 @@ internal const val TIME_OFF_SUMMARY = "Time Off"
 internal class EventTransformer(
     private val workjam: WorkjamClient,
     private val company: String,
-    private val iCalManager: ICalManager,
+    private val domain: String,
     private val descriptionGenerator: DescriptionGenerator,
     private val summaryGenerator: SummaryGenerator,
 ) {
+    private val json = Json {
+        ignoreUnknownKeys = true
+        serializersModule = SerializersModule {
+            contextual(InstantSerialiser(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
+        }
+    }
 
-    private suspend fun transformShift(shift: Shift): GoogleEvent {
+    private suspend fun transformShift(shift: Shift): GoogleEvent = coroutineScope {
         val event = shift.event
+        val location = event.location
+        val zone = location.timeZoneID
 
-        val zone = event.location.timeZoneID
-        val storeRoster = workjam.shifts(
-            company, event.location.id,
-            startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
-            endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
-                .toOffsetDateTime()
-        )
+        val storeAsync = async(Dispatchers.IO) {
+            workjam.employers(workjam.userId).companies.firstNotNullOf { company ->
+                company.stores.find { store -> store.externalID == location.externalID }
+            }
+        }
+
+        val storeRosterAsync = async(Dispatchers.IO) {
+            workjam.shifts(
+                company,
+                location.id,
+                startDateTime = LocalDate.ofInstant(event.startDateTime, zone).atStartOfDay(zone).toOffsetDateTime(),
+                endDateTime = LocalDate.ofInstant(event.startDateTime, zone).plusDays(1).atStartOfDay(zone)
+                    .toOffsetDateTime()
+            )
+        }
+
+        val store = storeAsync.await()
+        val storeRoster = storeRosterAsync.await()
 
         val summary = summaryGenerator.generate(shift)
         val describableShift = createDescribableShift(shift, summary, storeRoster)
         val description = descriptionGenerator.generate(describableShift)
 
-        return GoogleEvent()
-            .setStart(event.startDateTime, event.location.timeZoneID)
+        GoogleEvent().setStart(event.startDateTime, event.location.timeZoneID)
             .setEnd(event.endDateTime, event.location.timeZoneID)
             .setSummary(summary)
-            .setICalUID(iCalManager.generate(event))
+            .setICalUID("${event.id}@$domain")
             .setDescription(description)
+            .setLocation(store.renderAddress())
+            .buildSafeExtendedProperties {
+                private {
+                    prop("schedule-event-type" to event.type.name)
+                    prop("shift:json" to json.encodeToString(shift))
+                }
+            }
     }
 
     private fun transformTimeOff(availability: Availability): GoogleEvent {
         val event = availability.event
 
-        return GoogleEvent()
-            .setStart(event.startDateTime.toGoogleEventDateTime())
+        return GoogleEvent().setStart(event.startDateTime.toGoogleEventDateTime())
             .setEnd(event.endDateTime.toGoogleEventDateTime())
             .setSummary(TIME_OFF_SUMMARY)
-            .setICalUID(iCalManager.generate(event))
+            .setICalUID("${event.id}@$domain")
+            .buildSafeExtendedProperties {
+                private {
+                    prop("schedule-event-type" to event.type.name)
+                    prop("availability:json" to json.encodeToString(availability))
+                }
+            }
     }
 
     suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> {
@@ -71,7 +108,9 @@ internal class EventTransformer(
             }
         }
 
-        return condensedEvents.mapNotNull { transform(it) }
+        return coroutineScope {
+            condensedEvents.map { async(Dispatchers.IO) { transform(it) } }.awaitAll().filterNotNull()
+        }
     }
 
     suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {
@@ -105,23 +144,33 @@ private fun createDescribableShift(
             val profile = assignee.profile
 
             DescribableShiftAssignee(
-                profile.firstName, profile.lastName,
-                profile.avatarURL?.replace(
-                    "/image/upload",
-                    "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                ),
-                startTime, endTime, event.type
+                profile.firstName, profile.lastName, profile.avatarURL?.replace(
+                    "/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                ), startTime, endTime, event.type
             )
         }
     }
 
-    val describableStorePositions = storeRoster.groupBy { it.position.name.removeSupPrefix() }
-        .toSortedMap()
-        .map { (position, positionedShifts) ->
-            DescribableStorePosition(
-                position,
+    val describableStorePositions =
+        storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap().map { (position, positionedShifts) ->
+            DescribableStorePosition(position,
                 positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
         }
 
     return DescribableShift(shift, title, describableStorePositions)
+}
+
+// e.g: Woolworths, 224-238 Mt Dandenong Rd, Croydon VIC 3136, Australia
+private fun Store.renderAddress(): String = buildString {
+    val address = storeAddress
+
+    // TODO: This is only really designed to work with stores
+    append("Woolworths, ")
+    append(address.streetLine1)
+    address.streetLine2?.let { append(' ').append(it) }
+    address.streetLine3?.let { append(' ').append(it) }
+    append(", ").append(address.city.name)
+    append(" ").append(address.province.name)
+    append(" ").append(address.postalCode)
+    append(", ").append(address.country.name)
 }

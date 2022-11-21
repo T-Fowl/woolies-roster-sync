@@ -2,9 +2,9 @@ package com.tfowl.woolies.sync.utils
 
 import com.google.api.client.util.store.DataStore
 import com.google.api.client.util.store.DataStoreFactory
-import com.tfowl.googleapi.DataStorage
-import com.tfowl.googleapi.StringSerialiser
-import com.tfowl.googleapi.asDataStorage
+import com.tfowl.gcal.DataStorage
+import com.tfowl.gcal.StringSerialiser
+import com.tfowl.gcal.asDataStorage
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.StringFormat
 import kotlinx.serialization.serializer

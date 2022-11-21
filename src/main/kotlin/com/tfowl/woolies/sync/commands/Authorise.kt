@@ -12,7 +12,7 @@ import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
-import com.tfowl.googleapi.GoogleApiServiceConfig
+import com.tfowl.gcal.GoogleApiServiceConfig
 import java.io.File
 import kotlin.system.exitProcess
 

@@ -33,34 +33,34 @@ data class Company(
 
     val marketplaceCode: String,
     val isVisible: Boolean,
-    val telephone: Telephone,
+//    val telephone: Telephone,
     val companyAddress: CompanyAddress,
     val stores: List<Store>,
 )
 
 @Serializable
 data class CompanyAddress(
-    val id: Long,
+    val id: Long?,
     val streetLine1: String,
     val streetLine2: String? = null,
     val streetLine3: String? = null,
     val postalCode: String,
-    val latitude: Double,
-    val longitude: Double,
-    val isDirty: Boolean,
+//    val latitude: Double,
+//    val longitude: Double,
+//    val isDirty: Boolean,
     val isDefault: Boolean? = null,
     val nickname: String? = null,
     val city: City,
     val province: City,
     val country: Country,
-    val geolocationConfigs: List<GeolocationConfig>
+//    val geolocationConfigs: List<GeolocationConfig>
 )
 
 @Serializable
 data class City(
-    val id: Long,
-    val name: String,
-    val abbr: String,
+    val id: Long?,
+    val name: String?,
+    val abbr: String?,
 
     @SerialName("timeZoneId")
     @Serializable(with = ZoneIdSerialiser::class)
@@ -69,14 +69,14 @@ data class City(
 
 @Serializable
 data class Country(
-    val id: Long,
-    val name: String,
+    val id: Long?,
+    val name: String?,
     val iso2: String,
-    val sequence: Long,
-    val postalCodeFormat: String,
-    val postalCodeRequired: String,
-    val dialingCode: String,
-    val number: Long
+    val sequence: Long?,
+    val postalCodeFormat: String?,
+    val postalCodeRequired: String?,
+    val dialingCode: String?,
+    val number: Long?
 )
 
 @Serializable
@@ -91,21 +91,21 @@ data class Store(
     val id: Long,
     val storeName: String,
     val storeAddress: CompanyAddress,
-    val telephone: Telephone,
+    val telephone: Telephone?,
 
     @SerialName("externalId")
     val externalID: String,
 
     val externalCode: String,
     val isVisible: Boolean,
-    val geofencingRadiusMeter: Long,
+    val geofencingRadiusMeter: Long?,
 
-    val region: Region,
+//    val region: Region,
     val networkMasks: List<String>? = null,
-    val onSiteGeofencing: Boolean,
-    val onSiteNetworkMasks: Boolean,
+//    val onSiteGeofencing: Boolean,
+    val onSiteNetworkMasks: Boolean?,
     val primary: Boolean,
-    val visible: Boolean
+//    val visible: Boolean
 )
 
 @Serializable

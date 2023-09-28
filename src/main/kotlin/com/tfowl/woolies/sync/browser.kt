@@ -17,7 +17,7 @@ fun createWebDriver(): Result<Playwright, BrowserError> = runCatching {
 }.mapError(BrowserError::CreateWebDriver)
 
 fun launchBrowser(playwright: Playwright, headless: Boolean = true): Result<Browser, BrowserError> = runCatching {
-    playwright.firefox().launch(BrowserType.LaunchOptions().setHeadless(headless))
+    playwright.chromium().launch(BrowserType.LaunchOptions().setHeadless(headless))
 }.mapError(BrowserError::LaunchBrowser)
 
 fun login(browser: Browser, email: String, password: String): Result<Page, BrowserError> = runCatching {

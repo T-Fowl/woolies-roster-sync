@@ -43,6 +43,8 @@ dependencies {
 
     implementation(project(":workjam"))
 
+    implementation("com.microsoft.playwright:playwright:1.38.0")
+
     implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")

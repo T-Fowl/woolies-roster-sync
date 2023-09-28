@@ -1,11 +1,10 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
-import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.file
-import com.github.ajalt.clikt.parameters.types.path
+import com.github.michaelbull.result.binding
+import com.github.michaelbull.result.unwrap
 import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
@@ -13,10 +12,16 @@ import com.tfowl.gcal.GoogleApiServiceConfig
 import com.tfowl.gcal.GoogleCalendar
 import com.tfowl.gcal.calendarView
 import com.tfowl.gcal.sync
+import com.tfowl.woolies.sync.createWebDriver
+import com.tfowl.woolies.sync.findTokenCookie
+import com.tfowl.woolies.sync.launchBrowser
+import com.tfowl.woolies.sync.login
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
-import com.tfowl.woolies.sync.utils.*
+import com.tfowl.woolies.sync.utils.Cookie
+import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
+import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import java.io.File
@@ -39,15 +44,8 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         .file(mustBeReadable = true, canBeDir = false)
         .default(File(DEFAULT_CLIENT_SECRETS_FILE))
 
-    private val workjamToken by mutuallyExclusiveOptions(
-        option("--cookies", help = "Cookies file in netscape format")
-            .path(mustBeReadable = true)
-            .convert("FILE") {
-                it.readCookies().findWorkjamTokenOrNull() ?: fail("Cookies file did not contain a workjam token cookie")
-            },
-        option("--token", help = "Workjam jwt"),
-        help = "Use when this program does not have a valid workjam authentication token stored"
-    ).single()
+    private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
+    private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
 
     private val syncFrom by option(
         help = "Local date to start syncing shifts, will sync from midnight at the start of the day",
@@ -62,8 +60,22 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
+        val token = binding {
+            println("Creating web driver")
+            createWebDriver().bind().use { driver ->
+                println("Launching browser")
+                val browser = launchBrowser(driver, headless = true).bind()
+
+                println("Logging into workjam")
+                val homePage = login(browser, email, password).bind()
+
+                findTokenCookie(homePage).bind()
+            }
+        }.unwrap()
+        println("Success")
+
         val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
-            .createClient("user", workjamToken)
+            .createClient("user", token)
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("More than 1 company")

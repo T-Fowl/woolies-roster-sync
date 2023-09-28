@@ -1,6 +1,7 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.parameters.groups.required
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.ajalt.clikt.parameters.types.file
 import com.github.michaelbull.result.binding
@@ -12,10 +13,7 @@ import com.tfowl.gcal.GoogleApiServiceConfig
 import com.tfowl.gcal.GoogleCalendar
 import com.tfowl.gcal.calendarView
 import com.tfowl.gcal.sync
-import com.tfowl.woolies.sync.createWebDriver
-import com.tfowl.woolies.sync.findTokenCookie
-import com.tfowl.woolies.sync.launchBrowser
-import com.tfowl.woolies.sync.login
+import com.tfowl.woolies.sync.*
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformer
@@ -37,12 +35,9 @@ internal const val DOMAIN = "workjam.tfowl.com"
 internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
 
 class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam to your calendar") {
-    private val googleCalendarId by option("--calendar-id", help = "ID of the destination google calendar")
-        .required()
+    private val googleCalendarId by googleCalendarOption().required()
 
-    private val googleClientSecrets by option("--secrets", help = "Google calendar api secrets file")
-        .file(mustBeReadable = true, canBeDir = false)
-        .default(File(DEFAULT_CLIENT_SECRETS_FILE))
+    private val googleClientSecrets by googleClientSecretsOption().required()
 
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
     private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
@@ -85,7 +80,7 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
 
         val calendarApi = GoogleCalendar.create(
             GoogleApiServiceConfig(
-                secrets = googleClientSecrets,
+                secretsProvider = { googleClientSecrets },
                 applicationName = APPLICATION_NAME,
                 scopes = listOf(CalendarScopes.CALENDAR),
                 dataStoreFactory = dsf

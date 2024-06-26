@@ -3,7 +3,6 @@ package com.tfowl.woolies.sync.commands
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.groups.required
 import com.github.ajalt.clikt.parameters.options.*
-import com.github.ajalt.clikt.parameters.types.file
 import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
 import com.google.api.client.util.store.DataStoreFactory
@@ -52,14 +51,16 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         helpTags = mapOf("Example" to "2007-12-03")
     ).localDate().defaultLazy(defaultForHelp = "a month from sync-from") { syncFrom.plusMonths(1) }
 
+    private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
+
     override fun run() = runBlocking {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val token = binding {
             println("Creating web driver")
             createWebDriver().bind().use { driver ->
-                println("Launching browser")
-                val browser = launchBrowser(driver, headless = true).bind()
+                println("Connecting to browser")
+                val browser = connectToBrowser(driver, playwrightDriverUrl).bind()
 
                 println("Logging into workjam")
                 val homePage = login(browser, email, password).bind()

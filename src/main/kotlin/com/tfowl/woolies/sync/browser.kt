@@ -1,7 +1,9 @@
 package com.tfowl.woolies.sync
 
 import com.github.michaelbull.result.*
-import com.microsoft.playwright.*
+import com.microsoft.playwright.Browser
+import com.microsoft.playwright.Page
+import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.options.AriaRole
 
 sealed class BrowserError {
@@ -13,11 +15,16 @@ sealed class BrowserError {
 }
 
 fun createWebDriver(): Result<Playwright, BrowserError> = runCatching {
-    Playwright.create()
+    Playwright.create(
+        Playwright.CreateOptions().setEnv(
+            mapOf("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD" to "true")
+        )
+    )
 }.mapError(BrowserError::CreateWebDriver)
 
-fun launchBrowser(playwright: Playwright, headless: Boolean = true): Result<Browser, BrowserError> = runCatching {
-    playwright.chromium().launch(BrowserType.LaunchOptions().setHeadless(headless))
+fun connectToBrowser(playwright: Playwright, url: String): Result<Browser, BrowserError> = runCatching {
+    // TODO: Figure out version compatability matrix and switch to regular connect
+    playwright.chromium().connectOverCDP(url)
 }.mapError(BrowserError::LaunchBrowser)
 
 fun login(browser: Browser, email: String, password: String): Result<Page, BrowserError> = runCatching {

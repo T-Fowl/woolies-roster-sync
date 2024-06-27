@@ -23,8 +23,7 @@ fun createWebDriver(): Result<Playwright, BrowserError> = runCatching {
 }.mapError(BrowserError::CreateWebDriver)
 
 fun connectToBrowser(playwright: Playwright, url: String): Result<Browser, BrowserError> = runCatching {
-    // TODO: Figure out version compatability matrix and switch to regular connect
-    playwright.chromium().connectOverCDP(url)
+    playwright.chromium().connect(url)
 }.mapError(BrowserError::LaunchBrowser)
 
 fun login(browser: Browser, email: String, password: String): Result<Page, BrowserError> = runCatching {

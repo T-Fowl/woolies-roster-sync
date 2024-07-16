@@ -6,3 +6,4 @@ out/
 .woolies-roster/
 client-secrets.json
 cookies.txt
+.env

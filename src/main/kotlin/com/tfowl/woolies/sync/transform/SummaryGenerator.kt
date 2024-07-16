@@ -6,6 +6,9 @@ import java.time.LocalTime
 
 fun String.removeSupPrefix(): String = replace(Regex("""^[*]?SUP\s*-\s*"""), "")
 
+private fun LocalTime.isTrucksStartingTime(): Boolean =
+    (this == LocalTime.of(4, 30)) || (this == LocalTime.of(5, 30)) || (this == LocalTime.of(13, 0))
+
 /**
  * /**
  * Responsible for generating the summary/title for [com.google.api.services.calendar.model.Event]s
@@ -22,35 +25,26 @@ object DefaultSummaryGenerator : SummaryGenerator {
         /* If the shift is set up correctly with different segments, including dispatch: */
         val segmentGroups = shift.segments.groupBy { it.position.name.removeSupPrefix().lowercase() }
 
-        if (segmentGroups.keys.any { "supervisor" in it }) {
-            return "Supervisor"
-        }
+        return buildString {
+            when {
+                shift.startTime < LocalTime.NOON  -> append("AM ")
+                shift.startTime >= LocalTime.NOON -> append("PM ")
+            }
 
-        if ("online dispatch" in segmentGroups) {
-            val dispatchSegments = segmentGroups["online dispatch"]!!
+            if (shift.startTime == LocalTime.of(3, 0))
+                append("Opening ")
 
-            if (dispatchSegments.any { segment -> segment.startTime < LocalTime.NOON })
-                return "AM Trucks"
-            if (dispatchSegments.any { segment -> segment.startTime >= LocalTime.NOON })
-                return "PM Trucks"
-            return "Trucks"
-        }
+            if (segmentGroups.keys.any { "supervisor" in it }) {
+                append("Supervisor ")
+            }
 
-        /* If the shift isn't set up correctly with dispatch segments: */
-
-        // AM Trucks are usually 4:30 or 5:30, this is for historical shifts where I started earlier
-        if (shift.startTime <= LocalTime.of(5, 30))
-            return "AM Trucks"
-
-        // Doesn't include starting early, but if I'm already at work doing PM trucks doesn't really matter
-        if (shift.startTime == LocalTime.of(13, 0))
-            return "PM Trucks"
-
-        return when {
-            shift.startTime < LocalTime.NOON  -> "AM"
-            shift.startTime >= LocalTime.NOON -> "PM"
-            else                              -> shift.event.title?.removeSupPrefix() ?: "Error: Missing Title"
-        }
+            if ("online dispatch" in segmentGroups) {
+                append("Trucks ")
+            } else if (segmentGroups.keys.any { "online" in it } && shift.startTime.isTrucksStartingTime()) {
+                /* If the shift isn't set up correctly with dispatch segments: */
+                append("Trucks ")
+            }
+        }.trim()
     }
 }
 

@@ -4,7 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.context
 import com.github.ajalt.clikt.core.subcommands
-import com.github.ajalt.clikt.output.CliktHelpFormatter
+import com.github.ajalt.clikt.output.MordantHelpFormatter
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
@@ -28,10 +28,13 @@ fun CliktCommand.googleClientSecretsOption() = mutuallyExclusiveOptions(
 class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
     init {
         context {
-            helpFormatter = CliktHelpFormatter(
-                showDefaultValues = true,
-                showRequiredTag = true,
-            )
+            helpFormatter = {
+                MordantHelpFormatter(
+                    context = it,
+                    showDefaultValues = true,
+                    showRequiredTag = true,
+                )
+            }
         }
     }
 }

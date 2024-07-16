@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "1.9.0"
-    kotlin("plugin.serialization") version "1.9.0" apply false
+    kotlin("jvm") version "2.0.0"
+    kotlin("plugin.serialization") version "2.0.0" apply false
     application
 }
 
@@ -35,24 +35,28 @@ allprojects {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
 
-    implementation("com.github.ajalt.clikt:clikt:3.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
+
+    implementation("com.github.ajalt.clikt:clikt:4.4.0")
 
     implementation(project(":gcal-sync-kt"))
 
-    implementation("com.michael-bull.kotlin-result:kotlin-result:1.1.14")
-    implementation("com.michael-bull.kotlin-result:kotlin-result-coroutines:1.1.14")
+    implementation("com.michael-bull.kotlin-result:kotlin-result:2.0.0")
+    implementation("com.michael-bull.kotlin-result:kotlin-result-coroutines:2.0.0")
+
+
+    implementation("org.mnode.ical4j:ical4j:4.0.1")
 
     implementation(project(":workjam"))
 
     implementation("com.microsoft.playwright:playwright:1.44.0")
 
-    implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.17.1")
+    implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.18.0")
 
-    testImplementation("org.junit.jupiter:junit-jupiter:5.8.2")
-    testImplementation("io.mockk:mockk:1.12.3")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
+    testImplementation("io.mockk:mockk:1.13.12")
 }
 
 tasks.withType<Test> {

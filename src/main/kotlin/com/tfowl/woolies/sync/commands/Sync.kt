@@ -21,6 +21,7 @@ import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
 import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
@@ -32,6 +33,8 @@ internal const val WORKJAM_TOKEN_COOKIE_NAME = "token"
 internal const val DEFAULT_CLIENT_SECRETS_FILE = "client-secrets.json"
 internal const val DOMAIN = "workjam.tfowl.com"
 internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
+
+private val LOGGER = LoggerFactory.getLogger(Sync::class.java)
 
 class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam to your calendar") {
     private val googleCalendarId by googleCalendarOption().required()
@@ -57,18 +60,18 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val token = binding {
-            println("Creating web driver")
+            LOGGER.debug("Creating web driver")
             createWebDriver().bind().use { driver ->
-                println("Connecting to browser")
+                LOGGER.debug("Connecting to browser")
                 val browser = connectToBrowser(driver, playwrightDriverUrl).bind()
 
-                println("Logging into workjam")
+                LOGGER.debug("Logging into workjam")
                 val homePage = login(browser, email, password).bind()
 
                 findTokenCookie(homePage).bind()
             }
         }.unwrap()
-        println("Success")
+        LOGGER.debug("Success")
 
         val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
             .createClient("user", token)

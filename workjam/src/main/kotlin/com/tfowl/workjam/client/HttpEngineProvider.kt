@@ -1,7 +1,7 @@
 package com.tfowl.workjam.client
 
 import io.ktor.client.engine.*
-import io.ktor.client.engine.cio.*
+import io.ktor.client.engine.java.*
 import io.ktor.http.*
 
 interface HttpEngineProvider {
@@ -11,7 +11,7 @@ interface HttpEngineProvider {
 
 open class DefaultHttpEngineProvider(private val host: String = "prod-aus-gcp-woolworths-api.workjam.com") :
     HttpEngineProvider {
-    override fun provide(): HttpClientEngine = CIO.create()
+    override fun provide(): HttpClientEngine = Java.create()
     override fun defaultUrlBuilder(): URLBuilder {
         return URLBuilder(
             protocol = URLProtocol.HTTPS,

@@ -9,5 +9,8 @@
         <Root level="info">
             <AppenderRef ref="Console"/>
         </Root>
+        <Logger name="net.fortuna.ical4j" level="error">
+            <AppenderRef ref="Console" />
+        </Logger>
     </Loggers>
 </Configuration>

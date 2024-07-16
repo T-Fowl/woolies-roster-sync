@@ -49,11 +49,12 @@ dependencies {
 
     implementation("org.mnode.ical4j:ical4j:4.0.1")
 
+
     implementation(project(":workjam"))
 
     implementation("com.microsoft.playwright:playwright:1.44.0")
 
-    implementation("org.apache.logging.log4j:log4j-slf4j18-impl:2.18.0")
+    implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1")
 
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
     testImplementation("io.mockk:mockk:1.13.12")

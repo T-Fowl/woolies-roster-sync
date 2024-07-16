@@ -7,9 +7,12 @@ import com.tfowl.gcal.toGoogleEventDateTime
 import com.tfowl.workjam.client.WorkjamClient
 import com.tfowl.workjam.client.model.*
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
@@ -21,7 +24,7 @@ internal const val TIME_OFF_SUMMARY = "Time Off"
 /**
  * Responsible for transforming [ScheduleEvent]s into [GoogleEvent]s
  */
-internal class EventTransformer(
+internal class EventTransformerToGoogle(
     private val workjam: WorkjamClient,
     private val company: String,
     private val domain: String,
@@ -33,6 +36,23 @@ internal class EventTransformer(
         serializersModule = SerializersModule {
             contextual(InstantSerialiser(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
         }
+    }
+
+    private fun transformShift(shift: Shift, store: Store, summary: String, description: String): GoogleEvent {
+        val event = shift.event
+
+        return GoogleEvent().setStart(event.startDateTime, event.location.timeZoneID)
+            .setEnd(event.endDateTime, event.location.timeZoneID)
+            .setSummary(summary)
+            .setICalUID("${event.id}@$domain")
+            .setDescription(description)
+            .setLocation(store.renderAddress())
+            .buildSafeExtendedProperties {
+                private {
+                    prop("schedule-event-type" to event.type.name)
+                    prop("shift:json" to json.encodeToString(shift))
+                }
+            }
     }
 
     private suspend fun transformShift(shift: Shift): GoogleEvent = coroutineScope {
@@ -60,21 +80,10 @@ internal class EventTransformer(
         val storeRoster = storeRosterAsync.await()
 
         val summary = summaryGenerator.generate(shift)
-        val describableShift = createDescribableShift(shift, summary, storeRoster)
+        val describableShift = DescribableShift.create(shift, summary, storeRoster)
         val description = descriptionGenerator.generate(describableShift)
 
-        GoogleEvent().setStart(event.startDateTime, event.location.timeZoneID)
-            .setEnd(event.endDateTime, event.location.timeZoneID)
-            .setSummary(summary)
-            .setICalUID("${event.id}@$domain")
-            .setDescription(description)
-            .setLocation(store.renderAddress())
-            .buildSafeExtendedProperties {
-                private {
-                    prop("schedule-event-type" to event.type.name)
-                    prop("shift:json" to json.encodeToString(shift))
-                }
-            }
+        transformShift(shift, store, summary, description)
     }
 
     private fun transformTimeOff(availability: Availability): GoogleEvent {
@@ -93,28 +102,36 @@ internal class EventTransformer(
     }
 
     suspend fun transformAll(events: List<ScheduleEvent>): List<GoogleEvent> {
-        val sortedEvents = events.sortedBy { it.startDateTime }
 
-        val condensedEvents = sortedEvents.fold(emptyList<ScheduleEvent>()) { list, current ->
-            /*
-                Combines all consecutive time-off events into one long event
-                TODO: When syncing we need to check if we can condense into a time-off event just before the sync period
-                      Also should we find a way to store a reference of all the combined events? e.g. extendedProperties?
-            */
-            if (list.isNotEmpty() && list.last().type == ScheduleEventType.AVAILABILITY_TIME_OFF && current.type == ScheduleEventType.AVAILABILITY_TIME_OFF) {
-                list.dropLast(1) + list.last().copy(endDateTime = current.endDateTime)
-            } else {
-                list + current
+        val consolidatedTimeOff = events
+            .filter { it.type == ScheduleEventType.AVAILABILITY_TIME_OFF }
+            .sortedBy { it.startDateTime }
+            .fold(emptyList<ScheduleEvent>()) { list, current ->
+                /*
+                    Combines all consecutive time-off events into one long event
+                    TODO: When syncing we need to check if we can condense into a time-off event just before the sync period
+                          Also should we find a way to store a reference of all the combined events? e.g. extendedProperties?
+                */
+
+                if (list.firstOrNull()?.type == ScheduleEventType.AVAILABILITY_TIME_OFF && current.type == ScheduleEventType.AVAILABILITY_TIME_OFF) {
+                    list.dropLast(1) + list.last().copy(endDateTime = current.endDateTime)
+                } else {
+                    list + current
+                }
             }
-        }
+
+        val consolidatedEvents = events
+            .filter { it.type != ScheduleEventType.AVAILABILITY_TIME_OFF }
+            .plus(consolidatedTimeOff)
+            .sortedBy { it.startDateTime }
 
         return coroutineScope {
-            condensedEvents.map { async(Dispatchers.IO) { transform(it) } }.awaitAll().filterNotNull()
+            consolidatedEvents.map { async(Dispatchers.IO) { transform(it) } }.awaitAll().filterNotNull()
         }
     }
 
     suspend fun transform(event: ScheduleEvent): GoogleEvent? = when (event.type) {
-        ScheduleEventType.SHIFT -> {
+        ScheduleEventType.SHIFT                 -> {
             val shift = workjam.shift(company, event.location.id, event.id)
             transformShift(shift)
         }
@@ -124,43 +141,15 @@ internal class EventTransformer(
             transformTimeOff(availability)
         }
 
-        ScheduleEventType.N_IMPORTE_QUOI -> {
+        ScheduleEventType.N_IMPORTE_QUOI        -> {
             // TODO: Log warning?
             null
         }
 
-        else -> null
+        else                                    -> null
     }
 }
 
-private fun createDescribableShift(
-    shift: Shift,
-    title: String,
-    storeRoster: List<Shift>,
-): DescribableShift {
-
-    fun Shift.toDescribableAsignees(): List<DescribableShiftAssignee> {
-        return assignees.map { assignee ->
-            val profile = assignee.profile
-
-            DescribableShiftAssignee(
-                profile.firstName, profile.lastName, profile.avatarURL?.replace(
-                    "/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                ), startTime, endTime, event.type
-            )
-        }
-    }
-
-    val describableStorePositions =
-        storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap().map { (position, positionedShifts) ->
-            DescribableStorePosition(position,
-                positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
-        }
-
-    return DescribableShift(shift, title, describableStorePositions)
-}
-
-// e.g: Woolworths, 224-238 Mt Dandenong Rd, Croydon VIC 3136, Australia
 private fun Store.renderAddress(): String = buildString {
     val address = storeAddress
 

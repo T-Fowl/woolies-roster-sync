@@ -16,12 +16,42 @@ internal interface DescriptionGenerator {
 internal data class DescribableShift(
     val shift: Shift,
     val title: String,
-    val storePositions: List<DescribableStorePosition>
-)
+    val storePositions: List<DescribableStorePosition>,
+) {
+    companion object {
+        fun create(
+            shift: Shift,
+            title: String,
+            storeRoster: List<Shift>,
+        ): DescribableShift {
+
+            fun Shift.toDescribableAsignees(): List<DescribableShiftAssignee> {
+                return assignees.map { assignee ->
+                    val profile = assignee.profile
+
+                    DescribableShiftAssignee(
+                        profile.firstName, profile.lastName, profile.avatarURL?.replace(
+                            "/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
+                        ), startTime, endTime, event.type
+                    )
+                }
+            }
+
+            val describableStorePositions =
+                storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap()
+                    .map { (position, positionedShifts) ->
+                        DescribableStorePosition(position,
+                            positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
+                    }
+
+            return DescribableShift(shift, title, describableStorePositions)
+        }
+    }
+}
 
 internal data class DescribableStorePosition(
     val position: String,
-    val coworkers: List<DescribableShiftAssignee>
+    val coworkers: List<DescribableShiftAssignee>,
 )
 
 internal data class DescribableShiftAssignee(
@@ -30,7 +60,7 @@ internal data class DescribableShiftAssignee(
     val avatarUrl: String? = null,
     val startTime: LocalTime,
     val endTime: LocalTime,
-    val type: ScheduleEventType
+    val type: ScheduleEventType,
 ) {
     val fullName: String get() = "$firstName $lastName"
 }
@@ -51,7 +81,7 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
 
             sp.coworkers.forEach { cw ->
                 append("\t${cw.startTime} - ${cw.endTime} ${cw.fullName}")
-                if(cw.type != ScheduleEventType.SHIFT) append(" OFF") // TODO
+                if (cw.type != ScheduleEventType.SHIFT) append(" OFF") // TODO
                 appendLine()
             }
 

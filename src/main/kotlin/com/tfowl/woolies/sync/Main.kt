@@ -11,6 +11,7 @@ import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.tfowl.woolies.sync.commands.Authorise
+import com.tfowl.woolies.sync.commands.Feed
 import com.tfowl.woolies.sync.commands.Sync
 
 fun CliktCommand.googleCalendarOption() = option(
@@ -40,5 +41,5 @@ class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
 }
 
 fun main(vararg args: String) = WooliesRosterCommand().subcommands(
-    Sync(), Authorise()
+    Sync(), Feed(), Authorise()
 ).main(args)

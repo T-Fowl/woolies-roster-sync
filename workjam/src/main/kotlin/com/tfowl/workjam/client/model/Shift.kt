@@ -17,6 +17,8 @@ import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
 import kotlinx.serialization.json.JsonArray
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
 
@@ -43,8 +45,12 @@ data class Shift(
 )
 
 val Shift.startTime: LocalTime get() = LocalTime.ofInstant(event.startDateTime, event.location.timeZoneID)
+val Shift.startDate: LocalDate get() = LocalDate.ofInstant(event.startDateTime, event.location.timeZoneID)
+val Shift.startDateTime: LocalDateTime get() = LocalDateTime.ofInstant(event.startDateTime, event.location.timeZoneID)
 
 val Shift.endTime: LocalTime get() = LocalTime.ofInstant(event.endDateTime, event.location.timeZoneID)
+val Shift.endDate: LocalDate get() = LocalDate.ofInstant(event.endDateTime, event.location.timeZoneID)
+val Shift.endDateTime: LocalDateTime get() = LocalDateTime.ofInstant(event.endDateTime, event.location.timeZoneID)
 
 @Serializable
 data class Assignee(

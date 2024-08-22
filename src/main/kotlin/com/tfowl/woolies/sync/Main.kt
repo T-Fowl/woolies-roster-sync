@@ -10,7 +10,6 @@ import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
-import com.tfowl.woolies.sync.commands.Authorise
 import com.tfowl.woolies.sync.commands.Feed
 import com.tfowl.woolies.sync.commands.Sync
 
@@ -41,5 +40,5 @@ class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
 }
 
 fun main(vararg args: String) = WooliesRosterCommand().subcommands(
-    Sync(), Feed(), Authorise()
+    Sync(), Feed()
 ).main(args)

@@ -3,7 +3,6 @@ plugins {
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
     implementation(libs.kotlinx.serialization.json)
 
     implementation(platform("io.ktor:ktor-bom:2.3.12"))

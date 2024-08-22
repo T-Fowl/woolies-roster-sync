@@ -32,12 +32,12 @@ class Feed : CliktCommand(name = "feed", help = "Convert your workjam schedule t
     private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
 
     private val fetchFrom by option(
-        help = "Local date to start syncing shifts, will sync from midnight at the start of the day",
+        help = "Local date to start feed, will fetch from midnight at the start of the day",
         helpTags = mapOf("Example" to "2007-12-03")
     ).localDate().default(LocalDate.now(), defaultForHelp = "today")
 
     private val fetchTo by option(
-        help = "Local date to finish syncing shifts, will sync until midnight at the end of the day",
+        help = "Local date to end shifts, will fetch until midnight at the end of the day",
         helpTags = mapOf("Example" to "2007-12-03")
     ).localDate().defaultLazy(defaultForHelp = "a month from sync-from") { fetchFrom.plusMonths(1) }
 
@@ -64,10 +64,10 @@ class Feed : CliktCommand(name = "feed", help = "Convert your workjam schedule t
             .createClient("user", token)
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
-            ?: error("More than 1 company")
+            ?: error("Employee is employed at more than 1 company - Not currently supported")
         val store = company.stores.singleOrNull { it.primary }
-            ?: error("More than 1 primary store")
-        val storeZoneId = store.storeAddress.city.timeZoneID ?: error("Primary store does not have a zone id")
+            ?: error("Employee has more than 1 primary store - Not currently supported")
+        val storeZoneId = store.storeAddress.city.timeZoneID ?: error("Primary store does not have a time zone id")
 
         val transformer = EventTransformerToICal(
             workjam,

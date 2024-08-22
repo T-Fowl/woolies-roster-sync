@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.0.0"
-    kotlin("plugin.serialization") version "2.0.0" apply false
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization) apply false
     application
 }
 
@@ -35,29 +35,18 @@ allprojects {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.1")
-
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.1")
-
-    implementation("com.github.ajalt.clikt:clikt:4.4.0")
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.clikt)
+    implementation(libs.bundles.kotlinresult)
+    implementation(libs.ical4j)
+    implementation(libs.playwright)
+    implementation(libs.log4j.slf4j2impl)
 
     implementation(project(":gcal-sync-kt"))
-
-    implementation("com.michael-bull.kotlin-result:kotlin-result:2.0.0")
-    implementation("com.michael-bull.kotlin-result:kotlin-result-coroutines:2.0.0")
-
-
-    implementation("org.mnode.ical4j:ical4j:4.0.1")
-
-
     implementation(project(":workjam"))
 
-    implementation("com.microsoft.playwright:playwright:1.46.0")
-
-    implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1")
-
-    testImplementation("org.junit.jupiter:junit-jupiter:5.10.3")
-    testImplementation("io.mockk:mockk:1.13.12")
+    testImplementation(libs.bundles.testing)
 }
 
 tasks.withType<Test> {

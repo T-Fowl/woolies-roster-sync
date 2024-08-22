@@ -1,0 +1,36 @@
+[versions]
+kotlinx-serialization = "1.7.1"
+kotlinx-coroutines = "1.7.1"
+kotlinresult = "2.0.0"
+ical4j = "4.0.1"
+playwright = "1.46.0"
+log4j = "2.23.1"
+clikt = "4.4.0"
+mockk = "1.13.12"
+junit = "5.10.3"
+ktor = "2.3.12"
+
+[libraries]
+playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
+ical4j = { module = "org.mnode.ical4j:ical4j", version.ref = "ical4j" }
+kotlinresult = { module = "com.michael-bull.kotlin-result:kotlin-result", version.ref = "kotlinresult" }
+kotlinresult-coroutines = { module = "com.michael-bull.kotlin-result:kotlin-result-coroutines", version.ref = "kotlinresult" }
+clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
+kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+log4j-slf4j2impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j" }
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+
+[bundles]
+kotlinresult = ["kotlinresult", "kotlinresult-coroutines"]
+testing = ["junit-jupiter", "mockk"]
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.0.0" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.0.0" }

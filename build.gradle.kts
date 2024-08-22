@@ -52,7 +52,7 @@ dependencies {
 
     implementation(project(":workjam"))
 
-    implementation("com.microsoft.playwright:playwright:1.44.0")
+    implementation("com.microsoft.playwright:playwright:1.46.0")
 
     implementation("org.apache.logging.log4j:log4j-slf4j2-impl:2.23.1")
 

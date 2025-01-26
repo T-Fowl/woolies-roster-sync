@@ -11,62 +11,111 @@ internal interface DescriptionGenerator {
 }
 
 internal data class DescribableShift(
-    val shift: Shift,
+    val myShift: Shift,
     val title: String,
-    val storePositions: List<DescribableStorePosition>,
+    val storeRoles: List<RoleSummary>,
 ) {
     companion object {
         fun create(
-            shift: Shift,
+            myShift: Shift,
             title: String,
-            storeRoster: List<Shift>,
+            storeDailyShifts: List<Shift>,
         ): DescribableShift {
+            val roster = mutableMapOf<String, MutableList<DepartmentShift>>()
 
-            fun Shift.toDescribableAsignees(): List<DescribableShiftAssignee> {
-                return assignees.map { assignee ->
-                    val profile = assignee.profile
+            storeDailyShifts.forEach { shift ->
 
-                    DescribableShiftAssignee(
-                        profile.firstName, profile.lastName, profile.avatarURL?.replace(
-                            "/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"
-                        ), startTime, endTime, event.type
+                /**
+                 * Group segments together when they're in the same department
+                 * e.g. [Produce, Online, Meal, Online] --> [[Produce,], [Online, Meal, Online]]
+                 *      [Produce, Meal, Online]         --> [[Produce, Meal], [Online,]]
+                 */
+                val segmentGroups = shift.segments.fold(emptyList<List<Segment>>()) { groups, segment ->
+                    if (groups.isEmpty())
+                        return@fold listOf(listOf(segment))
+                    else {
+                        val currentGroup = groups.last()
+                        val lastSegment = currentGroup.last()
+                        val secondLastSegment = currentGroup.getOrNull(currentGroup.lastIndex - 1)
+
+                        /**
+                         * 1. Last segment is same position as this segment (in case)
+                         *    e.g. [Online, Online] --> [[Online,]]
+                         * 2. This segment is a break (tack onto the previous segment regardless as I cannot know which one it technically belongs to)
+                         *    e.g. [Online, Meal, Produce] --> [[Online, Meal], [Produce,]]
+                         * 3. If the last segment is a break and the one before it is the same position as this one
+                         *    e.g. [Online, Meal, Produce] --> [[Online, Meal], [Produce,]]
+                         */
+                        if (lastSegment.isSamePositionAs(segment) || segment.isBreak ||
+                            (lastSegment.isBreak && true == secondLastSegment?.isSamePositionAs(segment))
+                        ) {
+                            return@fold groups.dropLast(1).plusElement(currentGroup + segment)
+                        } else {
+                            return@fold groups.plusElement(listOf(segment))
+                        }
+                    }
+                }
+
+                segmentGroups.forEach { group ->
+                    val position = group.first().position.name.removeSupPrefix()
+                    val startTime = group.first().startTime
+                    val endTime = group.last().endTime
+
+                    roster.getOrPut(position) { mutableListOf() }.addAll(
+                        shift.assignees.map { assignee ->
+                            DepartmentShift(
+                                assignee,
+                                startTime,
+                                endTime
+                            )
+                        }
                     )
                 }
             }
 
-            val describableStorePositions =
-                storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap()
-                    .map { (position, positionedShifts) ->
-                        DescribableStorePosition(
-                            position,
-                            positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
-                    }
+            val shiftComparator: Comparator<DepartmentShift> =
+                compareBy { s: DepartmentShift -> s.startTime }
+                    .thenComparing { s: DepartmentShift -> s.endTime }
+                    .thenComparing { s: DepartmentShift -> s.lastName }
 
-            return DescribableShift(shift, title, describableStorePositions)
+            val roleSummaries = roster.toSortedMap().map { (position, shifts) ->
+                RoleSummary(
+                    position,
+                    shifts.sortedWith(shiftComparator)
+                )
+            }
+
+            return DescribableShift(myShift, title, roleSummaries)
         }
     }
 }
 
-internal data class DescribableStorePosition(
+internal data class RoleSummary(
     val position: String,
-    val coworkers: List<DescribableShiftAssignee>,
+    val coworkers: List<DepartmentShift>,
 )
 
-internal data class DescribableShiftAssignee(
+internal data class DepartmentShift(
     val firstName: String,
     val lastName: String,
     val avatarUrl: String? = null,
     val startTime: LocalTime,
     val endTime: LocalTime,
-    val type: ScheduleEventType,
 ) {
+    constructor(assignee: Assignee, startTime: LocalTime, endTime: LocalTime) : this(
+        assignee.profile.firstName,
+        assignee.profile.lastName,
+        assignee.profile.avatarURL?.replace("/image/upload", "/image/upload/f_auto,q_auto,w_64,h_64,c_thumb,g_face"),
+        startTime, endTime
+    )
+
     val fullName: String get() = "$firstName $lastName"
 }
 
 internal object DefaultDescriptionGenerator : DescriptionGenerator {
     override fun generate(describableShift: DescribableShift): String = buildString {
         appendLine("<h1>Segments</h1>")
-        describableShift.shift.segments.forEach { segment ->
+        describableShift.myShift.segments.forEach { segment ->
             append("${segment.startTime} - ${segment.endTime}: ")
             when (segment.type) {
                 SegmentType.BREAK_MEAL -> append("Meal Break")
@@ -78,12 +127,11 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
         appendLine("<hr>")
 
         appendLine("<h1>Coworkers</h1>")
-        describableShift.storePositions.forEach { sp ->
+        describableShift.storeRoles.forEach { sp ->
             appendLine("<b>${sp.position}</b>")
 
             sp.coworkers.forEach { cw ->
                 append("\t${cw.startTime} - ${cw.endTime} ${cw.fullName}")
-                if (cw.type != ScheduleEventType.SHIFT) append(" OFF") // TODO
                 appendLine()
             }
 
@@ -91,3 +139,9 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
         }
     }
 }
+
+val Segment.isBreak: Boolean
+    get() = this.type == SegmentType.BREAK_MEAL || this.type == SegmentType.BREAK_REST
+
+fun Segment.isSamePositionAs(other: Segment): Boolean =
+    this.position.name.removeSupPrefix() == other.position.name.removeSupPrefix()

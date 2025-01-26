@@ -16,6 +16,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.LocalDate
+import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import com.google.api.services.calendar.model.Event as GoogleEvent
 
@@ -89,8 +90,17 @@ internal class EventTransformerToGoogle(
     private fun transformTimeOff(availability: Availability): GoogleEvent {
         val event = availability.event
 
-        return GoogleEvent().setStart(event.startDateTime.toGoogleEventDateTime())
-            .setEnd(event.endDateTime.toGoogleEventDateTime())
+        val startOfDay = event.startDateTime.atZone(event.location.timeZoneID)
+            .with(LocalTime.MIDNIGHT)
+            .toInstant()
+
+        val endOfDay = event.endDateTime.atZone(event.location.timeZoneID)
+            .plusDays(1).with(LocalTime.MIDNIGHT)
+            .toInstant()
+
+        return GoogleEvent()
+            .setStart(startOfDay.toGoogleEventDateTime())
+            .setEnd(endOfDay.toGoogleEventDateTime())
             .setSummary(TIME_OFF_SUMMARY)
             .setICalUID("${event.id}@$domain")
             .buildSafeExtendedProperties {

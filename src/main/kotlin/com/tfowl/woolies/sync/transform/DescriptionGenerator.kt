@@ -1,9 +1,6 @@
 package com.tfowl.woolies.sync.transform
 
-import com.tfowl.workjam.client.model.ScheduleEventType
-import com.tfowl.workjam.client.model.Shift
-import com.tfowl.workjam.client.model.endTime
-import com.tfowl.workjam.client.model.startTime
+import com.tfowl.workjam.client.model.*
 import java.time.LocalTime
 
 /**
@@ -40,7 +37,8 @@ internal data class DescribableShift(
             val describableStorePositions =
                 storeRoster.groupBy { it.position.name.removeSupPrefix() }.toSortedMap()
                     .map { (position, positionedShifts) ->
-                        DescribableStorePosition(position,
+                        DescribableStorePosition(
+                            position,
                             positionedShifts.flatMap { it.toDescribableAsignees() }.sortedBy { it.startTime })
                     }
 
@@ -70,7 +68,11 @@ internal object DefaultDescriptionGenerator : DescriptionGenerator {
         appendLine("<h1>Segments</h1>")
         describableShift.shift.segments.forEach { segment ->
             append("${segment.startTime} - ${segment.endTime}: ")
-            append(segment.position.name.removeSupPrefix())
+            when (segment.type) {
+                SegmentType.BREAK_MEAL -> append("Meal Break")
+                SegmentType.BREAK_REST -> append("Rest Break")
+                else                   -> append(segment.position.name.removeSupPrefix())
+            }
             appendLine()
         }
         appendLine("<hr>")

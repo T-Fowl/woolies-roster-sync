@@ -47,6 +47,7 @@ dependencies {
     implementation(libs.ical4j)
     implementation(libs.playwright)
     implementation(libs.log4j.slf4j2impl)
+    implementation(libs.log4j.core)
 
     implementation(project(":gcal-sync-kt"))
     implementation(project(":workjam"))

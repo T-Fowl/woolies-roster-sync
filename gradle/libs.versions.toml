@@ -19,6 +19,7 @@ clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
 log4j-slf4j2impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j" }
+log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }

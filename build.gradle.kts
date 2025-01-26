@@ -46,8 +46,9 @@ dependencies {
     implementation(libs.bundles.kotlinresult)
     implementation(libs.ical4j)
     implementation(libs.playwright)
-    implementation(libs.log4j.slf4j2impl)
-    implementation(libs.log4j.core)
+
+    runtimeOnly(libs.logback.core)
+    runtimeOnly(libs.logback.classic)
 
     implementation(project(":gcal-sync-kt"))
     implementation(project(":workjam"))

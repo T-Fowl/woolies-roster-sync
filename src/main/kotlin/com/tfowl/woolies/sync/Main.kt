@@ -40,6 +40,8 @@ class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
     }
 }
 
-fun main(vararg args: String) = WooliesRosterCommand().subcommands(
-    Sync(), Feed(), Contract()
-).main(args)
+fun main(vararg args: String) {
+    WooliesRosterCommand().subcommands(
+        Sync(), Feed(), Contract()
+    ).main(args)
+}

@@ -11,7 +11,7 @@ sealed class BrowserError {
     data class LaunchBrowser(val cause: Throwable) : BrowserError()
     data class Login(val cause: Throwable) : BrowserError()
 
-    object TokenNotFound : BrowserError()
+    data object TokenNotFound : BrowserError()
 }
 
 fun createWebDriver(): Result<Playwright, BrowserError> = runCatching {

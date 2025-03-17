@@ -5,7 +5,6 @@ plugins {
 dependencies {
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(platform("io.ktor:ktor-bom:2.3.12"))
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.java)
     implementation(libs.ktor.client.logging)

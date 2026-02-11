@@ -115,6 +115,7 @@ class Contract : CliktCommand(name = "contract", help = "Convert your contract s
                 .withDefaults()
                 .withProperty(LastModified(Instant.parse(profile.position.startDate)))
                 .withProperty(net.fortuna.ical4j.model.property.TzId(profile.timezone))
+                .fluentTarget
 
             val contractStart = Instant.parse(profile.position.startDate)
                 .atZone(ZoneId.of(profile.timezone))
@@ -136,8 +137,8 @@ class Contract : CliktCommand(name = "contract", help = "Convert your contract s
                             .withProperty(RRule<LocalDate>("FREQ=WEEKLY;INTERVAL=${contract.weeks.size};WKST=MO"))
                             .withProperty(Location(profile.costCentre.addressFormatted))
                             .withProperty(net.fortuna.ical4j.model.property.TzId(profile.timezone))
-                            .getFluentTarget()
-                    )
+                            .fluentTarget as VEvent
+                    ).fluentTarget
                 }
             }
 

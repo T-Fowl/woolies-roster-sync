@@ -26,7 +26,7 @@ internal class EventTransformerToICal(
             .withProperty(Uid("${event.id}@$domain"))
             .withProperty(Description(description))
             .withProperty(Location(store.renderAddress()))
-            .getFluentTarget()
+            .fluentTarget as VEvent
     }
 
     private suspend fun transformShift(shift: Shift): VEvent = coroutineScope {
@@ -65,7 +65,7 @@ internal class EventTransformerToICal(
 
         return VEvent(event.startDateTime, event.endDateTime, TIME_OFF_SUMMARY)
             .withProperty(Uid("${event.id}@$domain"))
-            .getFluentTarget()
+            .fluentTarget as VEvent
     }
 
     suspend fun transformAll(events: List<ScheduleEvent>): List<VEvent> {

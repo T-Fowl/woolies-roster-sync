@@ -1,5 +1,6 @@
 package com.tfowl.woolies.sync.commands
 
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
@@ -29,7 +30,7 @@ import java.time.format.DateTimeFormatter
 
 private val LOGGER = LoggerFactory.getLogger(Feed::class.java)
 
-class Feed : CliktCommand(name = "feed") {
+class Feed : SuspendingCliktCommand(name = "feed") {
     override fun help(context: Context): String = context.theme.info("Convert your workjam schedule to an ical feed")
 
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
@@ -47,7 +48,7 @@ class Feed : CliktCommand(name = "feed") {
 
     private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
 
-    override fun run() = runBlocking {
+    override suspend fun run() {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val token = binding {

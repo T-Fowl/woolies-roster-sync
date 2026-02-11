@@ -1,10 +1,15 @@
 package com.tfowl.woolies.sync
 
+import com.github.ajalt.clikt.command.SuspendingNoOpCliktCommand
+import com.github.ajalt.clikt.command.main
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.NoOpCliktCommand
+import com.github.ajalt.clikt.core.ParameterHolder
 import com.github.ajalt.clikt.core.context
+import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.output.MordantHelpFormatter
+import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
@@ -14,19 +19,19 @@ import com.tfowl.woolies.sync.commands.Contract
 import com.tfowl.woolies.sync.commands.Feed
 import com.tfowl.woolies.sync.commands.Sync
 
-fun CliktCommand.googleCalendarOption() = option(
+fun ParameterHolder.googleCalendarOption() = option(
     "--calendar",
     envvar = "GOOGLE_CALENDAR_ID",
     help = "ID of the destination google calendar"
 )
 
-fun CliktCommand.googleClientSecretsOption() = mutuallyExclusiveOptions(
+fun ParameterHolder.googleClientSecretsOption() = mutuallyExclusiveOptions(
     option("--google-client-secrets").file().convert { it.reader() },
     option("--google-secrets", envvar = "GOOGLE_CLIENT_SECRETS").convert { it.reader() }
 ).single()
 
 
-class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
+class WooliesRosterCommand : SuspendingNoOpCliktCommand(name = "woolies-roster") {
     init {
         context {
             helpFormatter = {
@@ -40,7 +45,7 @@ class WooliesRosterCommand : NoOpCliktCommand(name = "woolies-roster") {
     }
 }
 
-fun main(vararg args: String) {
+suspend fun main(vararg args: String) {
     WooliesRosterCommand().subcommands(
         Sync(), Feed(), Contract()
     ).main(args)

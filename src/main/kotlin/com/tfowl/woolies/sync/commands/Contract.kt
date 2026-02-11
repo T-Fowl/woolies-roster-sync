@@ -1,5 +1,6 @@
 package com.tfowl.woolies.sync.commands
 
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
@@ -66,7 +67,7 @@ data class TeamMemberPosition(
 
 private val LOGGER = LoggerFactory.getLogger(Contract::class.java)
 
-class Contract : CliktCommand(name = "contract") {
+class Contract : SuspendingCliktCommand(name = "contract") {
     override fun help(context: Context): String = context.theme.info("Convert your contract schedule to an ical feed")
 
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
@@ -74,7 +75,7 @@ class Contract : CliktCommand(name = "contract") {
 
     private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
 
-    override fun run() = runBlocking {
+    override suspend fun run() {
 
         LOGGER.debug("Creating web driver")
         createWebDriver().unwrap().use { driver ->

@@ -1,5 +1,6 @@
 package com.tfowl.woolies.sync.commands
 
+import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
@@ -40,7 +41,7 @@ internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
 
 private val LOGGER = LoggerFactory.getLogger(Sync::class.java)
 
-class Sync : CliktCommand(name = "sync") {
+class Sync : SuspendingCliktCommand(name = "sync") {
     override fun help(context: Context): String = context.theme.info("Sync your roster from workjam to your calendar")
 
     private val googleCalendarId by googleCalendarOption().required()
@@ -62,7 +63,7 @@ class Sync : CliktCommand(name = "sync") {
 
     private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
 
-    override fun run() = runBlocking {
+    override suspend fun run() {
         val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
 
         val token = binding {

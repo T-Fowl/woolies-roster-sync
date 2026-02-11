@@ -1,8 +1,13 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.groups.required
-import com.github.ajalt.clikt.parameters.options.*
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.defaultLazy
+import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.options.required
 import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
 import com.google.api.client.util.store.DataStoreFactory
@@ -13,19 +18,18 @@ import com.tfowl.gcal.GoogleCalendar
 import com.tfowl.gcal.calendarView
 import com.tfowl.gcal.sync
 import com.tfowl.woolies.sync.*
+import com.tfowl.woolies.sync.commands.options.localDate
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToGoogle
 import com.tfowl.woolies.sync.utils.Cookie
 import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
-import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.workjam.client.WorkjamClientProvider
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDate
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 internal const val APPLICATION_NAME = "APPLICATION_NAME"
 internal const val WORKJAM_TOKEN_COOKIE_DOMAIN = "api.workjam.com"
@@ -36,7 +40,9 @@ internal const val DEFAULT_STORAGE_DIR = ".woolies-roster"
 
 private val LOGGER = LoggerFactory.getLogger(Sync::class.java)
 
-class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam to your calendar") {
+class Sync : CliktCommand(name = "sync") {
+    override fun help(context: Context): String = context.theme.info("Sync your roster from workjam to your calendar")
+
     private val googleCalendarId by googleCalendarOption().required()
 
     private val googleClientSecrets by googleClientSecretsOption().required()
@@ -116,9 +122,6 @@ class Sync : CliktCommand(name = "sync", help = "Sync your roster from workjam t
         )
     }
 }
-
-private fun RawOption.localDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): NullableOption<LocalDate, LocalDate> =
-    convert("LOCAL_DATE") { it.toLocalDateOrNull(formatter) ?: fail("A date in the $formatter format is required") }
 
 internal fun List<Cookie>.findWorkjamTokenOrNull(): String? =
     firstOrNull { it.domain.endsWith(WORKJAM_TOKEN_COOKIE_DOMAIN) && it.name == WORKJAM_TOKEN_COOKIE_NAME }?.value

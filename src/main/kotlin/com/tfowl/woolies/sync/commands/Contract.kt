@@ -1,6 +1,8 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.michaelbull.result.unwrap
@@ -64,7 +66,9 @@ data class TeamMemberPosition(
 
 private val LOGGER = LoggerFactory.getLogger(Contract::class.java)
 
-class Contract : CliktCommand(name = "contract", help = "Convert your contract schedule to an ical feed") {
+class Contract : CliktCommand(name = "contract") {
+    override fun help(context: Context): String = context.theme.info("Convert your contract schedule to an ical feed")
+
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
     private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
 

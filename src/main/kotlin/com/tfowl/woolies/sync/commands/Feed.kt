@@ -1,6 +1,8 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.core.CliktCommand
+import com.github.ajalt.clikt.core.Context
+import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
@@ -27,7 +29,9 @@ import java.time.format.DateTimeFormatter
 
 private val LOGGER = LoggerFactory.getLogger(Feed::class.java)
 
-class Feed : CliktCommand(name = "feed", help = "Convert your workjam schedule to an ical feed") {
+class Feed : CliktCommand(name = "feed") {
+    override fun help(context: Context): String = context.theme.info("Convert your workjam schedule to an ical feed")
+
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
     private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
 

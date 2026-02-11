@@ -1,10 +1,10 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
-import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.options.*
+import com.github.ajalt.clikt.parameters.types.enum
 import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
 import com.google.api.client.util.store.DataStoreFactory
@@ -19,7 +19,6 @@ import com.tfowl.woolies.sync.transform.EventTransformerToICal
 import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
 import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.workjam.client.WorkjamClientProvider
-import kotlinx.coroutines.runBlocking
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.property.LastModified
 import org.slf4j.LoggerFactory
@@ -28,10 +27,16 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 
-private val LOGGER = LoggerFactory.getLogger(Feed::class.java)
+private val LOGGER = LoggerFactory.getLogger(Shifts::class.java)
 
-class Feed : SuspendingCliktCommand(name = "feed") {
-    override fun help(context: Context): String = context.theme.info("Convert your workjam schedule to an ical feed")
+enum class OutputFormat {
+    ICAL, JSON, GOOGLE,
+}
+
+class Shifts : SuspendingCliktCommand(name = "shifts") {
+    override fun help(context: Context): String = context.theme.info("Get your schedule from workjam")
+
+    val format by option("--fmt", help = "Output format").enum<OutputFormat>().default(OutputFormat.ICAL)
 
     private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
     private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()

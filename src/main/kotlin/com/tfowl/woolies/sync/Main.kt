@@ -2,21 +2,17 @@ package com.tfowl.woolies.sync
 
 import com.github.ajalt.clikt.command.SuspendingNoOpCliktCommand
 import com.github.ajalt.clikt.command.main
-import com.github.ajalt.clikt.core.CliktCommand
-import com.github.ajalt.clikt.core.NoOpCliktCommand
 import com.github.ajalt.clikt.core.ParameterHolder
 import com.github.ajalt.clikt.core.context
-import com.github.ajalt.clikt.core.main
 import com.github.ajalt.clikt.core.subcommands
 import com.github.ajalt.clikt.output.MordantHelpFormatter
-import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.groups.mutuallyExclusiveOptions
 import com.github.ajalt.clikt.parameters.groups.single
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.file
 import com.tfowl.woolies.sync.commands.Contract
-import com.tfowl.woolies.sync.commands.Feed
+import com.tfowl.woolies.sync.commands.Shifts
 import com.tfowl.woolies.sync.commands.Sync
 
 fun ParameterHolder.googleCalendarOption() = option(
@@ -47,6 +43,6 @@ class WooliesRosterCommand : SuspendingNoOpCliktCommand(name = "woolies-roster")
 
 suspend fun main(vararg args: String) {
     WooliesRosterCommand().subcommands(
-        Sync(), Feed(), Contract()
+        Sync(), Shifts(), Contract()
     ).main(args)
 }

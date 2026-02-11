@@ -44,7 +44,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.clikt)
     implementation(libs.bundles.kotlinresult)
-    implementation(libs.ical4j)
+    implementation(libs.bundles.ical4j)
     implementation(libs.playwright)
 
     runtimeOnly(libs.logback.core)
@@ -54,6 +54,7 @@ dependencies {
     implementation(project(":workjam"))
 
     testImplementation(libs.bundles.testing)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 tasks.withType<Test> {

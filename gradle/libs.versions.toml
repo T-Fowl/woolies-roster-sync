@@ -2,17 +2,21 @@
 kotlinx-serialization = "1.7.1"
 kotlinx-coroutines = "1.7.1"
 kotlinresult = "2.0.0"
-ical4j = "4.0.1"
-playwright = "1.46.0"
+ical4j = "4.1.1"
+ical4j-extensions = "2.0.0"
+ical4j-connector = "2.0.0-alpha1"
+playwright = "1.52.0"
 clikt = "4.4.0"
 mockk = "1.13.12"
-junit = "5.10.3"
+junit = "5.13.4"
 ktor = "2.3.12"
 logback = "1.5.16"
 
 [libraries]
 playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
 ical4j = { module = "org.mnode.ical4j:ical4j", version.ref = "ical4j" }
+ical4j-extensions = { module = "org.mnode.ical4j:ical4j-extensions", version.ref = "ical4j-extensions" }
+ical4j-connector = { module = "org.mnode.ical4j:ical4j-connector", version.ref = "ical4j-connector" }
 kotlinresult = { module = "com.michael-bull.kotlin-result:kotlin-result", version.ref = "kotlinresult" }
 kotlinresult-coroutines = { module = "com.michael-bull.kotlin-result:kotlin-result-coroutines", version.ref = "kotlinresult" }
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
@@ -31,7 +35,8 @@ ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "k
 [bundles]
 kotlinresult = ["kotlinresult", "kotlinresult-coroutines"]
 testing = ["junit-jupiter", "mockk"]
+ical4j = ["ical4j", "ical4j-extensions"] # ical4j-connector compiled against old ical4j
 
 [plugins]
-kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.0.0" }
-kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.0.0" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.3.0" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version = "2.3.0" }

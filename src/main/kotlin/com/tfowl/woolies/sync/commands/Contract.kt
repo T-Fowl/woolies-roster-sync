@@ -1,17 +1,15 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
-import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
-import com.github.ajalt.clikt.parameters.options.option
-import com.github.ajalt.clikt.parameters.options.required
+import com.github.ajalt.clikt.parameters.groups.provideDelegate
 import com.github.michaelbull.result.unwrap
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.options.AriaRole
+import com.tfowl.woolies.sync.commands.options.BrowserAuthentication
 import com.tfowl.woolies.sync.connectToBrowser
 import com.tfowl.woolies.sync.createWebDriver
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import net.fortuna.ical4j.model.Calendar
@@ -70,26 +68,23 @@ private val LOGGER = LoggerFactory.getLogger(Contract::class.java)
 class Contract : SuspendingCliktCommand(name = "contract") {
     override fun help(context: Context): String = context.theme.info("Convert your contract schedule to an ical feed")
 
-    private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
-    private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
-
-    private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
+    val browserOptions by BrowserAuthentication()
 
     override suspend fun run() {
 
         LOGGER.debug("Creating web driver")
         createWebDriver().unwrap().use { driver ->
-            val browser = connectToBrowser(driver, playwrightDriverUrl).unwrap()
+            val browser = connectToBrowser(driver, browserOptions.playwrightUrl).unwrap()
 
 
             LOGGER.debug("Logging into team data")
             val page = browser.newPage()
             page.navigate("https://teamdata.woolworths.com.au")
 
-            page.getByPlaceholder("someone@example.com").fill(email)
+            page.getByPlaceholder("someone@example.com").fill(browserOptions.email)
             page.getByRole(AriaRole.BUTTON, Page.GetByRoleOptions().setName("Next")).click()
 
-            page.getByPlaceholder("Password").fill(password)
+            page.getByPlaceholder("Password").fill(browserOptions.password)
             page.getByRole(AriaRole.BUTTON, Page.GetByRoleOptions().setName("Sign in")).click()
 
             page.getByRole(AriaRole.BUTTON, Page.GetByRoleOptions().setName("No")).click()

@@ -1,17 +1,15 @@
 package com.tfowl.woolies.sync.commands
 
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
-import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
+import com.github.ajalt.clikt.parameters.groups.groupChoice
 import com.github.ajalt.clikt.parameters.groups.required
+import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
-import com.github.ajalt.clikt.parameters.options.defaultLazy
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
-import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
-import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.google.api.services.calendar.CalendarScopes
 import com.tfowl.gcal.GoogleApiServiceConfig
@@ -19,14 +17,15 @@ import com.tfowl.gcal.GoogleCalendar
 import com.tfowl.gcal.calendarView
 import com.tfowl.gcal.sync
 import com.tfowl.woolies.sync.*
-import com.tfowl.woolies.sync.commands.options.localDate
+import com.tfowl.woolies.sync.commands.options.BrowserAuthentication
+import com.tfowl.woolies.sync.commands.options.TokenAuthentication
+import com.tfowl.woolies.sync.commands.options.token
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToGoogle
 import com.tfowl.woolies.sync.utils.Cookie
 import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
 import com.tfowl.workjam.client.WorkjamClientProvider
-import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDate
@@ -48,40 +47,36 @@ class Sync : SuspendingCliktCommand(name = "sync") {
 
     private val googleClientSecrets by googleClientSecretsOption().required()
 
-    private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
-    private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
+    val auth by option().groupChoice(
+        "token" to TokenAuthentication(),
+        "browser" to BrowserAuthentication(),
+    )
 
-    private val syncFrom by option(
-        help = "Local date to start syncing shifts, will sync from midnight at the start of the day",
-        helpTags = mapOf("Example" to "2007-12-03")
-    ).localDate().default(LocalDate.now(), defaultForHelp = "today")
+    val period by option(
+        "--period",
+        help = "Period to fetch your schedule for",
+        helpTags = mapOf("Format" to "YYYY-MM-DD/YYYY-MM-DD")
+    ).convert("local_date/local_date") { str ->
+        val (start, end) = str.split('/', limit = 2)
+        LocalDate.parse(start)..LocalDate.parse(end)
+    }.default(LocalDate.now()..LocalDate.now().plusDays(14), defaultForHelp = "next 14 days")
 
-    private val syncTo by option(
-        help = "Local date to finish syncing shifts, will sync until midnight at the end of the day",
-        helpTags = mapOf("Example" to "2007-12-03")
-    ).localDate().defaultLazy(defaultForHelp = "a month from sync-from") { syncFrom.plusMonths(1) }
-
-    private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
 
     override suspend fun run() {
-        val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
+        LOGGER.atDebug()
+            .addKeyValue("auth", auth)
+            .addKeyValue("period", period)
+            .log("Running Sync command")
 
-        val token = binding {
-            LOGGER.debug("Creating web driver")
-            createWebDriver().bind().use { driver ->
-                LOGGER.debug("Connecting to browser")
-                val browser = connectToBrowser(driver, playwrightDriverUrl).bind()
+        val dsf = FileDataStoreFactory(
+            File(
+                DEFAULT_STORAGE_DIR
+            )
+        )
 
-                LOGGER.debug("Logging into workjam")
-                val homePage = login(browser, email, password).bind()
-
-                findTokenCookie(homePage).bind()
-            }
-        }.unwrap()
-        LOGGER.debug("Success")
-
-        val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
-            .createClient("user", token)
+        val workjam = WorkjamClientProvider.create(
+            DataStoreCredentialStorage(dsf)
+        ).createClient("user", auth?.token()?.unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("More than 1 company")
@@ -106,8 +101,8 @@ class Sync : SuspendingCliktCommand(name = "sync") {
             DefaultSummaryGenerator,
         )
 
-        val syncStart = syncFrom.atStartOfDay(storeZoneId).toOffsetDateTime()
-        val syncEnd = syncTo.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
+        val syncStart = period.start.atStartOfDay(storeZoneId).toOffsetDateTime()
+        val syncEnd = period.endInclusive.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
 
         val workjamShifts = workjam.events(company.id.toString(), workjam.userId, syncStart, syncEnd)
 
@@ -116,7 +111,7 @@ class Sync : SuspendingCliktCommand(name = "sync") {
         sync(
             calendarApi,
             calendarApi.calendarView(googleCalendarId),
-            syncFrom..syncTo,
+            period,
             workjamEvents,
             ZoneId.of("Australia/Melbourne"), // TODO
             DOMAIN

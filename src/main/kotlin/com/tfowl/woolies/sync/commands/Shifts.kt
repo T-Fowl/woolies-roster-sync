@@ -3,21 +3,20 @@ package com.tfowl.woolies.sync.commands
 import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
-import com.github.ajalt.clikt.parameters.options.*
+import com.github.ajalt.clikt.parameters.groups.groupChoice
+import com.github.ajalt.clikt.parameters.options.convert
+import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.enum
-import com.github.michaelbull.result.binding
 import com.github.michaelbull.result.unwrap
-import com.google.api.client.util.store.DataStoreFactory
 import com.google.api.client.util.store.FileDataStoreFactory
-import com.tfowl.woolies.sync.connectToBrowser
-import com.tfowl.woolies.sync.createWebDriver
-import com.tfowl.woolies.sync.findTokenCookie
-import com.tfowl.woolies.sync.login
+import com.tfowl.woolies.sync.commands.options.BrowserAuthentication
+import com.tfowl.woolies.sync.commands.options.TokenAuthentication
+import com.tfowl.woolies.sync.commands.options.token
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToICal
 import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
-import com.tfowl.woolies.sync.utils.toLocalDateOrNull
 import com.tfowl.workjam.client.WorkjamClientProvider
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.property.LastModified
@@ -25,7 +24,6 @@ import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.Instant
 import java.time.LocalDate
-import java.time.format.DateTimeFormatter
 
 private val LOGGER = LoggerFactory.getLogger(Shifts::class.java)
 
@@ -36,42 +34,42 @@ enum class OutputFormat {
 class Shifts : SuspendingCliktCommand(name = "shifts") {
     override fun help(context: Context): String = context.theme.info("Get your schedule from workjam")
 
-    val format by option("--fmt", help = "Output format").enum<OutputFormat>().default(OutputFormat.ICAL)
+    val format by option(
+        "--f", "--format",
+        help = "Output format"
+    ).enum<OutputFormat>().default(OutputFormat.ICAL)
 
-    private val email by option("--email", envvar = "WORKJAM_EMAIL").required()
-    private val password by option("--password", envvar = "WORKJAM_PASSWORD").required()
 
-    private val fetchFrom by option(
-        help = "Local date to start feed, will fetch from midnight at the start of the day",
-        helpTags = mapOf("Example" to "2007-12-03")
-    ).localDate().default(LocalDate.now(), defaultForHelp = "today")
+    val auth by option().groupChoice(
+        "token" to TokenAuthentication(),
+        "browser" to BrowserAuthentication(),
+    )
 
-    private val fetchTo by option(
-        help = "Local date to end shifts, will fetch until midnight at the end of the day",
-        helpTags = mapOf("Example" to "2007-12-03")
-    ).localDate().defaultLazy(defaultForHelp = "a month from sync-from") { fetchFrom.plusMonths(1) }
-
-    private val playwrightDriverUrl by option("--playwright-driver-url", envvar = "PLAYWRIGHT_DRIVER_URL").required()
+    val period by option(
+        "--period",
+        help = "Period to fetch your schedule for",
+        helpTags = mapOf("Format" to "YYYY-MM-DD/YYYY-MM-DD")
+    ).convert("local_date/local_date") { str ->
+        val (start, end) = str.split('/', limit = 2)
+        LocalDate.parse(start)..LocalDate.parse(end)
+    }.default(LocalDate.now()..LocalDate.now().plusDays(14), defaultForHelp = "next 14 days")
 
     override suspend fun run() {
-        val dsf: DataStoreFactory = FileDataStoreFactory(File(DEFAULT_STORAGE_DIR))
+        LOGGER.atDebug()
+            .addKeyValue("format", format)
+            .addKeyValue("auth", auth)
+            .addKeyValue("period", period)
+            .log("Running Shifts command")
 
-        val token = binding {
-            LOGGER.debug("Creating web driver")
-            createWebDriver().bind().use { driver ->
-                LOGGER.debug("Connecting to browser")
-                val browser = connectToBrowser(driver, playwrightDriverUrl).bind()
-
-                LOGGER.debug("Logging into workjam")
-                val homePage = login(browser, email, password).bind()
-
-                findTokenCookie(homePage).bind()
-            }
-        }.unwrap()
-        LOGGER.debug("Success")
-
-        val workjam = WorkjamClientProvider.create(DataStoreCredentialStorage(dsf))
-            .createClient("user", token)
+        val workjam = WorkjamClientProvider.create(
+            DataStoreCredentialStorage(
+                FileDataStoreFactory(
+                    File(
+                        DEFAULT_STORAGE_DIR
+                    )
+                )
+            )
+        ).createClient("user", auth?.token()?.unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("Employee is employed at more than 1 company - Not currently supported")
@@ -87,8 +85,8 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
             DefaultSummaryGenerator,
         )
 
-        val startDateTime = fetchFrom.atStartOfDay(storeZoneId).toOffsetDateTime()
-        val endDateTime = fetchTo.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
+        val startDateTime = period.start.atStartOfDay(storeZoneId).toOffsetDateTime()
+        val endDateTime = period.endInclusive.plusDays(1).atStartOfDay(storeZoneId).toOffsetDateTime()
 
         val workjamEvents = workjam.events(company.id.toString(), workjam.userId, startDateTime, endDateTime)
 
@@ -105,6 +103,3 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
         println(calendar.fluentTarget)
     }
 }
-
-private fun RawOption.localDate(formatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE): NullableOption<LocalDate, LocalDate> =
-    convert("LOCAL_DATE") { it.toLocalDateOrNull(formatter) ?: fail("A date in the $formatter format is required") }

@@ -10,7 +10,8 @@ clikt = "5.1.0"
 mockk = "1.13.12"
 junit = "5.13.4"
 ktor = "2.3.12"
-logback = "1.5.16"
+logback = "1.5.18"
+logstash = "8.0"
 jwt = "4.4.0"
 
 [libraries]
@@ -23,6 +24,7 @@ kotlinresult-coroutines = { module = "com.michael-bull.kotlin-result:kotlin-resu
 clikt = { module = "com.github.ajalt.clikt:clikt", version.ref = "clikt" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinx-serialization" }
 kotlinx-coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "kotlinx-coroutines" }
+logstash-logback = { module = "net.logstash.logback:logstash-logback-encoder", version.ref = "logstash" }
 logback-core = { module = "ch.qos.logback:logback-core", version.ref = "logback" }
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
@@ -38,6 +40,11 @@ jwt = {module="com.auth0:java-jwt", version.ref="jwt"}
 kotlinresult = ["kotlinresult", "kotlinresult-coroutines"]
 testing = ["junit-jupiter", "mockk"]
 ical4j = ["ical4j", "ical4j-extensions"] # ical4j-connector compiled against old ical4j
+logging = [
+    "logback-core",
+    "logback-classic",
+    "logstash-logback",
+]
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version = "2.3.0" }

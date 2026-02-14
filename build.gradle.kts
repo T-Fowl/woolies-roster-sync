@@ -48,8 +48,7 @@ dependencies {
     implementation(libs.playwright)
     implementation(libs.jwt)
 
-    runtimeOnly(libs.logback.core)
-    runtimeOnly(libs.logback.classic)
+    implementation(libs.bundles.logging)
 
     implementation(project(":gcal-sync-kt"))
     implementation(project(":workjam"))

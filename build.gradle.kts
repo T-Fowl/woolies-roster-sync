@@ -46,6 +46,7 @@ dependencies {
     implementation(libs.bundles.kotlinresult)
     implementation(libs.bundles.ical4j)
     implementation(libs.playwright)
+    implementation(libs.jwt)
 
     runtimeOnly(libs.logback.core)
     runtimeOnly(libs.logback.classic)

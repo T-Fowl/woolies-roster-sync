@@ -11,6 +11,7 @@ mockk = "1.13.12"
 junit = "5.13.4"
 ktor = "2.3.12"
 logback = "1.5.16"
+jwt = "4.4.0"
 
 [libraries]
 playwright = { module = "com.microsoft.playwright:playwright", version.ref = "playwright" }
@@ -31,6 +32,7 @@ ktor-client-java = { module = "io.ktor:ktor-client-java", version.ref = "ktor" }
 ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
 ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
 ktor-client-logging = { module = "io.ktor:ktor-client-logging", version.ref = "ktor" }
+jwt = {module="com.auth0:java-jwt", version.ref="jwt"}
 
 [bundles]
 kotlinresult = ["kotlinresult", "kotlinresult-coroutines"]

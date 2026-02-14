@@ -1,6 +1,8 @@
 package com.tfowl.woolies.sync.commands.options
 
+import com.auth0.jwt.JWT
 import com.github.ajalt.clikt.parameters.groups.OptionGroup
+import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
 import com.github.michaelbull.result.Ok
@@ -28,13 +30,15 @@ class BrowserAuthentication : AuthMethod("Options for browser authentication") {
 }
 
 class TokenAuthentication : AuthMethod("Options for token authentication") {
-    val token by option("--token", envvar = "WORKJAM_TOKEN").required()
+    val token by option("--token", envvar = "WORKJAM_TOKEN")
+        .convert { JWT.decode(it) }
+        .required()
 }
 
 suspend fun AuthMethod.token(): Result<String, Any> = when (this) {
     is TokenAuthentication   -> {
         LOGGER.atDebug().log("Authenticating with a token")
-        Ok(token)
+        Ok(token.token)
     }
 
     is BrowserAuthentication -> withContext(Dispatchers.IO) {

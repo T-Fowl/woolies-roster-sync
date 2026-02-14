@@ -12,6 +12,7 @@ import com.github.michaelbull.result.unwrap
 import com.google.api.client.util.store.FileDataStoreFactory
 import com.tfowl.woolies.sync.commands.options.BrowserAuthentication
 import com.tfowl.woolies.sync.commands.options.TokenAuthentication
+import com.tfowl.woolies.sync.commands.options.localDateRange
 import com.tfowl.woolies.sync.commands.options.token
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
@@ -49,10 +50,8 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
         "--period",
         help = "Period to fetch your schedule for",
         helpTags = mapOf("Format" to "YYYY-MM-DD/YYYY-MM-DD")
-    ).convert("local_date/local_date") { str ->
-        val (start, end) = str.split('/', limit = 2)
-        LocalDate.parse(start)..LocalDate.parse(end)
-    }.default(LocalDate.now()..LocalDate.now().plusDays(14), defaultForHelp = "next 14 days")
+    ).localDateRange()
+        .default(LocalDate.now()..LocalDate.now().plusDays(14), "next 14 days")
 
     override suspend fun run() {
         LOGGER.atDebug()

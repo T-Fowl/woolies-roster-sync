@@ -5,7 +5,6 @@ import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.groups.groupChoice
 import com.github.ajalt.clikt.parameters.groups.required
-import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.options.required
@@ -16,10 +15,12 @@ import com.tfowl.gcal.GoogleApiServiceConfig
 import com.tfowl.gcal.GoogleCalendar
 import com.tfowl.gcal.calendarView
 import com.tfowl.gcal.sync
-import com.tfowl.woolies.sync.*
 import com.tfowl.woolies.sync.commands.options.BrowserAuthentication
 import com.tfowl.woolies.sync.commands.options.TokenAuthentication
+import com.tfowl.woolies.sync.commands.options.localDateRange
 import com.tfowl.woolies.sync.commands.options.token
+import com.tfowl.woolies.sync.googleCalendarOption
+import com.tfowl.woolies.sync.googleClientSecretsOption
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToGoogle
@@ -56,10 +57,8 @@ class Sync : SuspendingCliktCommand(name = "sync") {
         "--period",
         help = "Period to fetch your schedule for",
         helpTags = mapOf("Format" to "YYYY-MM-DD/YYYY-MM-DD")
-    ).convert("local_date/local_date") { str ->
-        val (start, end) = str.split('/', limit = 2)
-        LocalDate.parse(start)..LocalDate.parse(end)
-    }.default(LocalDate.now()..LocalDate.now().plusDays(14), defaultForHelp = "next 14 days")
+    ).localDateRange()
+        .default(LocalDate.now()..LocalDate.now().plusDays(14), "next 14 days")
 
 
     override suspend fun run() {

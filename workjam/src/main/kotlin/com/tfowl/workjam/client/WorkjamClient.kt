@@ -1,7 +1,9 @@
 package com.tfowl.workjam.client
 
+import com.auth0.jwt.interfaces.DecodedJWT
 import com.tfowl.workjam.client.model.*
 import com.tfowl.workjam.client.model.serialisers.InstantSerialiser
+import com.tfowl.workjam.client.model.serialisers.JwtSerialiser
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.engine.*
@@ -15,6 +17,7 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
+import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -67,6 +70,19 @@ class KtorWorkjamClient internal constructor(
     override val user: WorkjamUser,
     private val client: HttpClient,
 ) : WorkjamClient {
+    private suspend inline fun <reified T> get(requestUrlBuilder: URLBuilder.() -> Unit): T {
+        return client.get {
+            header(HttpHeaders.Authorization, "Bearer ${user.token.token}")
+//            header("x-token", user.token)
+            url.requestUrlBuilder()
+        }.body()
+    }
+
+    suspend fun auth(token: DecodedJWT = user.token): WorkjamUser {
+        return client.patch("/auth/v3") {
+            header(HttpHeaders.Authorization, "Bearer ${token.token}")
+        }.body()
+    }
 
     override suspend fun employees(company: String): List<Employee> = get {
         path("api/v4/companies/$company/employees")
@@ -136,20 +152,16 @@ class KtorWorkjamClient internal constructor(
         path("api/v4/companies/$company/employees/$employee/periodic_timecards")
     }
 
-    private suspend inline fun <reified T> get(requestUrlBuilder: URLBuilder.() -> Unit): T {
-        return client.get {
-            header(HttpHeaders.Authorization, "Bearer ${user.token}")
-//            header("x-token", user.token)
-            url.requestUrlBuilder()
-        }.body()
-    }
-
     companion object {
         suspend fun create(
-            token: String,
+            token: DecodedJWT,
             engine: HttpClientEngine = Java.create(),
             clientConfig: HttpClientConfig<*>.() -> Unit = {},
         ): KtorWorkjamClient {
+            if (token.expiresAtAsInstant <= Instant.now()) {
+                throw IllegalStateException("Provided jwt has already expired")
+            }
+
             val client = HttpClient(engine) {
                 install(HttpTimeout) {
                     requestTimeoutMillis = 30_000
@@ -168,6 +180,7 @@ class KtorWorkjamClient internal constructor(
                     json(Json {
                         ignoreUnknownKeys = true
                         serializersModule = SerializersModule {
+                            contextual(JwtSerialiser)
                             contextual(InstantSerialiser(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS[XX][XXX][ZZZ][OOOO]")))
                         }
                     })
@@ -186,8 +199,7 @@ class KtorWorkjamClient internal constructor(
             }
 
             val user = client.patch("/auth/v3") {
-                header(HttpHeaders.Authorization, "Bearer $token")
-//                header("x-token", token)
+                header(HttpHeaders.Authorization, "Bearer ${token.token}")
             }.body<WorkjamUser>()
 
             return KtorWorkjamClient(user, client)

@@ -3,6 +3,8 @@ plugins {
 }
 
 dependencies {
+    api(libs.jwt)
+
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.ktor.client.core)

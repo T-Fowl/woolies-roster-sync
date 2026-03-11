@@ -1,10 +1,13 @@
 package com.tfowl.workjam.client.model
 
+import com.auth0.jwt.interfaces.DecodedJWT
+import kotlinx.serialization.Contextual
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class WorkjamUser(
-    val token: String,
+    @Contextual
+    val token: DecodedJWT,
     val userId: Long,
     val firstLogin: Boolean,
     val hasEmployers: Boolean,

@@ -1,6 +1,7 @@
 package com.tfowl.woolies.sync.commands.options
 
 import com.auth0.jwt.JWT
+import com.auth0.jwt.interfaces.DecodedJWT
 import com.github.ajalt.clikt.parameters.groups.OptionGroup
 import com.github.ajalt.clikt.parameters.options.*
 import com.github.michaelbull.result.Ok
@@ -15,6 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.time.Instant
+import kotlin.use
 
 private val LOGGER = LoggerFactory.getLogger("com.tfowl.woolies.sync.commands.options.auth")
 
@@ -37,10 +39,10 @@ class TokenAuthentication : AuthMethod("Options for token authentication") {
         .check("Token must be current") { Instant.now() in (it.notBeforeAsInstant..it.expiresAtAsInstant) }
 }
 
-suspend fun AuthMethod.token(): Result<String, Any> = when (this) {
+suspend fun AuthMethod.token(): Result<DecodedJWT, Any> = when (this) {
     is TokenAuthentication   -> {
         LOGGER.atDebug().log("Authenticating with a token")
-        Ok(token.token)
+        Ok(token)
     }
 
     is BrowserAuthentication -> withContext(Dispatchers.IO) {
@@ -58,7 +60,9 @@ suspend fun AuthMethod.token(): Result<String, Any> = when (this) {
                 LOGGER.atDebug().log("Logging into workjam")
                 val homePage = login(browser, email, password).bind()
 
-                findTokenCookie(homePage).bind()
+                val token = findTokenCookie(homePage).bind()
+
+                JWT.decode(token)
             }
         }.onSuccess { LOGGER.atDebug().log("Success") }
     }

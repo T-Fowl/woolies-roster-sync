@@ -25,8 +25,8 @@ import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToGoogle
 import com.tfowl.woolies.sync.utils.Cookie
-import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
-import com.tfowl.workjam.client.WorkjamClientProvider
+import com.tfowl.workjam.client.KtorWorkjamClient
+import com.tfowl.workjam.client.WorkjamClient
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.time.LocalDate
@@ -73,9 +73,7 @@ class Sync : SuspendingCliktCommand(name = "sync") {
             )
         )
 
-        val workjam = WorkjamClientProvider.create(
-            DataStoreCredentialStorage(dsf)
-        ).createClient("user", auth?.token()?.unwrap())
+        val workjam: WorkjamClient = KtorWorkjamClient.create(auth!!.token().unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("More than 1 company")

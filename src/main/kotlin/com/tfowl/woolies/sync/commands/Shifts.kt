@@ -17,8 +17,8 @@ import com.tfowl.woolies.sync.commands.options.token
 import com.tfowl.woolies.sync.transform.DefaultDescriptionGenerator
 import com.tfowl.woolies.sync.transform.DefaultSummaryGenerator
 import com.tfowl.woolies.sync.transform.EventTransformerToICal
-import com.tfowl.woolies.sync.utils.DataStoreCredentialStorage
-import com.tfowl.workjam.client.WorkjamClientProvider
+import com.tfowl.workjam.client.KtorWorkjamClient
+import com.tfowl.workjam.client.WorkjamClient
 import net.fortuna.ical4j.model.Calendar
 import net.fortuna.ical4j.model.property.LastModified
 import org.slf4j.LoggerFactory
@@ -60,15 +60,7 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
             .addKeyValue("period", period)
             .log("Running Shifts command")
 
-        val workjam = WorkjamClientProvider.create(
-            DataStoreCredentialStorage(
-                FileDataStoreFactory(
-                    File(
-                        DEFAULT_STORAGE_DIR
-                    )
-                )
-            )
-        ).createClient("user", auth?.token()?.unwrap())
+        val workjam: WorkjamClient = KtorWorkjamClient.create(auth!!.token().unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("Employee is employed at more than 1 company - Not currently supported")

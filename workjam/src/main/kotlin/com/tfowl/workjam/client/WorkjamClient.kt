@@ -59,24 +59,24 @@ class DefaultWorkjamClient internal constructor(
     }
 
     override suspend fun employees(company: String): List<Employee> = get {
-        path("api", "v4", "companies", company, "employees")
+        path("api/v4/companies/$company/employees")
     }
 
     override suspend fun employee(company: String, employee: String): Employee = get {
-        path("api", "v4", "companies", company, "employees", employee)
+        path("api/v4/companies/$company/employees/$employee")
     }
 
     override suspend fun employers(employee: String): Employers = get {
-        path("api", "v1", "users", employee, "employers")
+        path("api/v1/users/$employee/employers")
     }
 
     override suspend fun employees(company: String, ids: Iterable<String>): List<Employee> = get {
-        path("api", "v4", "companies", company, "employees")
+        path("api/v4/companies/$company/employees")
         parameters.append("employeeIds", ids.joinToString(","))
     }
 
     override suspend fun workingStatus(company: String, employee: String): WorkingStatus = get {
-        path("api", "v4", "companies", company, "employees", employee, "working_status")
+        path("api/v4/companies/$company/employees/$employee/working_status")
     }
 
     override suspend fun events(
@@ -86,7 +86,7 @@ class DefaultWorkjamClient internal constructor(
         endDateTime: OffsetDateTime,
         includeOverlaps: Boolean,
     ): List<ScheduleEvent> = get {
-        path("api", "v4", "companies", company, "employees", employee, "events")
+        path("api/v4/companies/$company/employees/$employee/events")
         parameters.append("startDateTime", startDateTime.toString())
         parameters.append("endDateTime", endDateTime.toString())
         parameters.append("includeOverlaps", includeOverlaps.toString())
@@ -97,15 +97,15 @@ class DefaultWorkjamClient internal constructor(
         location: String,
         shift: String,
     ): Coworkers = get {
-        path("api", "v4", "companies", company, "locations", location, "shifts", shift, "coworkers")
+        path("api/v4/companies/$company/locations/$location/shifts/$shift/coworkers")
     }
 
     override suspend fun shift(company: String, location: String, shift: String): Shift = get {
-        path("api", "v4", "companies", company, "locations", location, "shifts", shift)
+        path("api/v4/companies/$company/locations/$location/shifts/$shift")
     }
 
     override suspend fun availability(company: String, employee: String, event: String): Availability = get {
-        path("api", "v4", "companies", company, "employees", employee, "availabilities", event)
+        path("api/v4/companies/$company/employees/$employee/availabilities/$event")
     }
 
     override suspend fun shifts(
@@ -115,7 +115,7 @@ class DefaultWorkjamClient internal constructor(
         endDateTime: OffsetDateTime,
         includeOverlaps: Boolean
     ): List<Shift> = get {
-        path("api", "v4", "companies", company, "locations", location, "shifts")
+        path("api/v4/companies/$company/locations/$location/shifts")
         parameters.append("startDateTime", startDateTime.toString())
         parameters.append("endDateTime", endDateTime.toString())
         parameters.append("includeOverlaps", includeOverlaps.toString())
@@ -123,7 +123,7 @@ class DefaultWorkjamClient internal constructor(
     }
 
     override suspend fun periodicTimecards(company: String, employee: String): List<PeriodicTimecard> = get {
-        path("api", "v4", "companies", company, "employees", employee, "periodic_timecards")
+        path("api/v4/companies/$company/employees/$employee/periodic_timecards")
     }
 }
 

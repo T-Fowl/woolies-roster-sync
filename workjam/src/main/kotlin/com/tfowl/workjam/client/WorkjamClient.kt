@@ -27,13 +27,14 @@ interface WorkjamClient {
 
     val userId: String get() = user.userId.toString()
 
-    suspend fun employees(company: String): List<Employee>
 
     suspend fun employee(company: String, employee: String): Employee
 
     suspend fun employers(employee: String): Employers
 
-    suspend fun employees(company: String, ids: Iterable<String>): List<Employee>
+    suspend fun employees(company: String): List<Employee>
+    suspend fun employeesByIds(company: String, ids: Iterable<String>): List<Employee>
+    suspend fun employeesByExternalIds(company: String, ids: Iterable<String>): List<Employee>
 
     suspend fun workingStatus(company: String, employee: String): WorkingStatus
 
@@ -86,6 +87,42 @@ class KtorWorkjamClient internal constructor(
 
     override suspend fun employees(company: String): List<Employee> = get {
         path("api/v4/companies/$company/employees")
+
+        parameters.append(
+            "extraFields",
+            "externalId,externalCode,currentEmployments,accessCode,accessCodeExpirationDateTime"
+        )
+        parameters.append("size", "1024")
+        parameters.append("sort", "lastName")
+        parameters.append("statuses", "ACTIVE,PENDING")
+
+        parameters.append("locationMode", "CHILDREN")
+        parameters.append("onlyMyFullyPermittedLocations", "true")
+//        parameters.append("startKey", "10")
+    }
+
+    override suspend fun employeesByIds(company: String, ids: Iterable<String>): List<Employee> = get {
+        path("api/v4/companies/$company/employees")
+        parameters.append(
+            "extraFields",
+            "externalId,externalCode,currentEmployments,accessCode,accessCodeExpirationDateTime"
+        )
+        parameters.append("size", "1024")
+        parameters.append("sort", "lastName")
+        parameters.append("statuses", "ACTIVE,PENDING")
+        parameters.append("employeeIds", ids.joinToString(","))
+    }
+
+    override suspend fun employeesByExternalIds(company: String, ids: Iterable<String>): List<Employee> = get {
+        path("api/v4/companies/$company/employees")
+        parameters.append(
+            "extraFields",
+            "externalId,externalCode,currentEmployments,accessCode,accessCodeExpirationDateTime"
+        )
+        parameters.append("size", "1024")
+        parameters.append("sort", "lastName")
+        parameters.append("statuses", "ACTIVE,PENDING")
+        parameters.append("externalIds", ids.joinToString(","))
     }
 
     override suspend fun employee(company: String, employee: String): Employee = get {
@@ -94,11 +131,6 @@ class KtorWorkjamClient internal constructor(
 
     override suspend fun employers(employee: String): Employers = get {
         path("api/v1/users/$employee/employers")
-    }
-
-    override suspend fun employees(company: String, ids: Iterable<String>): List<Employee> = get {
-        path("api/v4/companies/$company/employees")
-        parameters.append("employeeIds", ids.joinToString(","))
     }
 
     override suspend fun workingStatus(company: String, employee: String): WorkingStatus = get {

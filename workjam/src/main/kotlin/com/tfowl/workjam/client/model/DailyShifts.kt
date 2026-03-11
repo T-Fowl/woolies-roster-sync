@@ -8,7 +8,7 @@ import java.time.Instant
 data class DailyShift(
     @Contextual
     val startDateTime: Instant,
-    val shiftEvent: ScheduleEvent,
+    val shiftEvent: ScheduleEvent?=null,
     val timecardSummaries: List<TimecardSummary>,
 )
 

@@ -35,6 +35,7 @@ interface WorkjamClient {
     suspend fun employees(company: String): List<Employee>
     suspend fun employeesByIds(company: String, ids: Iterable<String>): List<Employee>
     suspend fun employeesByExternalIds(company: String, ids: Iterable<String>): List<Employee>
+    suspend fun employeesByLocationIds(company: String, ids: Iterable<String>): List<Employee>
 
     suspend fun workingStatus(company: String, employee: String): WorkingStatus
 
@@ -123,6 +124,20 @@ class KtorWorkjamClient internal constructor(
         parameters.append("sort", "lastName")
         parameters.append("statuses", "ACTIVE,PENDING")
         parameters.append("externalIds", ids.joinToString(","))
+    }
+
+    override suspend fun employeesByLocationIds(company: String, ids: Iterable<String>): List<Employee> = get {
+        path("api/v4/companies/$company/employees")
+        parameters.append(
+            "extraFields",
+            "externalId,externalCode,currentEmployments,accessCode,accessCodeExpirationDateTime"
+        )
+        parameters.append("size", "1024")
+        parameters.append("sort", "lastName")
+        parameters.append("statuses", "ACTIVE,PENDING")
+
+        parameters.append("locationMode", "STRICT")
+        parameters.append("locationIds", ids.joinToString(","))
     }
 
     override suspend fun employee(company: String, employee: String): Employee = get {

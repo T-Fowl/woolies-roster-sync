@@ -18,7 +18,9 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.modules.SerializersModule
 import kotlinx.serialization.modules.contextual
 import java.time.Instant
+import java.time.LocalDate
 import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.*
 
@@ -36,6 +38,8 @@ interface WorkjamClient {
     suspend fun employeesByIds(company: String, ids: Iterable<String>): List<Employee>
     suspend fun employeesByExternalIds(company: String, ids: Iterable<String>): List<Employee>
     suspend fun employeesByLocationIds(company: String, ids: Iterable<String>): List<Employee>
+
+    suspend fun dailyShifts(company: String, location: String, date: LocalDate, zone: ZoneId): List<DailyShift>
 
     suspend fun workingStatus(company: String, employee: String): WorkingStatus
 
@@ -150,6 +154,16 @@ class KtorWorkjamClient internal constructor(
 
     override suspend fun workingStatus(company: String, employee: String): WorkingStatus = get {
         path("api/v4/companies/$company/employees/$employee/working_status")
+    }
+
+    override suspend fun dailyShifts(company: String, location: String, date: LocalDate, zone: ZoneId): List<DailyShift> = get {
+        val start = date.atTime(0, 0, 0).atZone(zone).toOffsetDateTime()
+        val end = date.atTime(23, 59, 59).atZone(zone).toOffsetDateTime()
+
+        path("api/v4/companies/$company/locations/$location/timecard_summaries")
+        parameters.append("includeOverlaps", "true")
+        parameters.append("startDateTime", start.toString())
+        parameters.append("endDateTime", end.toString())
     }
 
     override suspend fun events(

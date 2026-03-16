@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.command.SuspendingCliktCommand
 import com.github.ajalt.clikt.core.Context
 import com.github.ajalt.clikt.core.theme
 import com.github.ajalt.clikt.parameters.groups.groupChoice
+import com.github.ajalt.clikt.parameters.groups.required
 import com.github.ajalt.clikt.parameters.options.convert
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
@@ -44,7 +45,7 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
     val auth by option().groupChoice(
         "token" to TokenAuthentication(),
         "browser" to BrowserAuthentication(),
-    )
+    ).required()
 
     val period by option(
         "--period",
@@ -60,7 +61,7 @@ class Shifts : SuspendingCliktCommand(name = "shifts") {
             .addKeyValue("period", period)
             .log("Running Shifts command")
 
-        val workjam: WorkjamClient = KtorWorkjamClient.create(auth!!.token().unwrap())
+        val workjam: WorkjamClient = KtorWorkjamClient.create(auth.token().unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("Employee is employed at more than 1 company - Not currently supported")

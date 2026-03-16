@@ -51,7 +51,7 @@ class Sync : SuspendingCliktCommand(name = "sync") {
     val auth by option().groupChoice(
         "token" to TokenAuthentication(),
         "browser" to BrowserAuthentication(),
-    )
+    ).required()
 
     val period by option(
         "--period",
@@ -73,7 +73,7 @@ class Sync : SuspendingCliktCommand(name = "sync") {
             )
         )
 
-        val workjam: WorkjamClient = KtorWorkjamClient.create(auth!!.token().unwrap())
+        val workjam: WorkjamClient = KtorWorkjamClient.create(auth.token().unwrap())
 
         val company = workjam.employers(workjam.userId).companies.singleOrNull()
             ?: error("More than 1 company")

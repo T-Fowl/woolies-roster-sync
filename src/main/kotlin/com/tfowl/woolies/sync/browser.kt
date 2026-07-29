@@ -5,6 +5,7 @@ import com.microsoft.playwright.Browser
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.options.AriaRole
+import com.microsoft.playwright.options.WaitUntilState
 
 sealed class BrowserError {
     data class CreateWebDriver(val cause: Throwable) : BrowserError()
@@ -40,7 +41,13 @@ fun login(browser: Browser, email: String, password: String): Result<Page, Brows
 
     page.getByRole(AriaRole.BUTTON, Page.GetByRoleOptions().setName("No")).click()
 
-    page.waitForURL("https://app.workjam.com/home")
+    // Seems to not work, haven't tried with NETWORKIDLE wait state however
+    // page.waitForURL(Regex("""https://app(-next)?.workjam.com/home""").pattern)
+
+    page.waitForURL(
+        { url -> url in arrayOf("https://app.workjam.com/home", "https://app-next.workjam.com/home") },
+        Page.WaitForURLOptions().setWaitUntil(WaitUntilState.NETWORKIDLE)
+    )
 
     page
 }.mapError(BrowserError::Login)
